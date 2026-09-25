@@ -10,11 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_212856) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
   enable_extension "pgcrypto"
+
+  create_table "agent_stats", force: :cascade do |t|
+    t.string "agent"
+    t.float "failure_rate", default: 0.1, null: false
+    t.integer "observations", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent"], name: "index_agent_stats_on_agent", unique: true
+  end
 
   create_table "agentkit_a2a_tasks", force: :cascade do |t|
     t.string "tenant_key", default: "__global__", null: false
@@ -871,6 +880,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_212856) do
     t.index ["tenant_key"], name: "index_agentkit_wiki_pages_on_tenant_key"
   end
 
+  create_table "changes", force: :cascade do |t|
+    t.string "repo", null: false
+    t.string "ref", null: false
+    t.string "pusher", null: false
+    t.string "base_sha"
+    t.string "head_sha", null: false
+    t.string "state", default: "pending", null: false
+    t.float "risk_score"
+    t.jsonb "risk_features", default: {}, null: false
+    t.jsonb "classification", default: {}, null: false
+    t.jsonb "review_reasons", default: [], null: false
+    t.bigint "gate_decision_id", null: false
+    t.bigint "merge_batch_id"
+    t.datetime "review_requested_at"
+    t.datetime "reviewed_at"
+    t.string "reviewer"
+    t.string "outcome"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["gate_decision_id"], name: "index_changes_on_gate_decision_id"
+    t.index ["merge_batch_id"], name: "index_changes_on_merge_batch_id"
+    t.index ["repo", "state", "created_at"], name: "index_changes_on_repo_and_state_and_created_at"
+  end
+
   create_table "gate_decisions", force: :cascade do |t|
     t.string "repo", null: false
     t.string "ref", null: false
@@ -887,6 +920,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_212856) do
     t.datetime "updated_at", null: false
     t.index ["repo", "created_at"], name: "index_gate_decisions_on_repo_and_created_at"
     t.index ["verdict"], name: "index_gate_decisions_on_verdict"
+  end
+
+  create_table "merge_batches", force: :cascade do |t|
+    t.string "repo", null: false
+    t.string "state", default: "running", null: false
+    t.integer "size"
+    t.integer "ci_runs", default: 0, null: false
+    t.string "base_sha"
+    t.string "merged_sha"
+    t.jsonb "log", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   add_foreign_key "agentkit_action_decisions", "agentkit_action_proposals", column: "proposal_id"
@@ -907,4 +952,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_212856) do
   add_foreign_key "agentkit_suggestions", "agentkit_experiments", column: "experiment_id"
   add_foreign_key "agentkit_trace_phases", "agentkit_traces", column: "trace_id"
   add_foreign_key "agentkit_wiki_pages", "agentkit_memory_assets", column: "asset_id"
+  add_foreign_key "changes", "gate_decisions"
 end

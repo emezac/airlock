@@ -6,5 +6,7 @@ class GateDecision < ApplicationRecord
   validates :verdict, inclusion: { in: VERDICTS }
   validates :review, inclusion: { in: REVIEWS }, allow_nil: true
 
+  has_one :change, dependent: nil
+
   scope :recent, -> { order(created_at: :desc) }
 end

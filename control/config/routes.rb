@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  resources :reviews, only: :index do
+    member do
+      post :approve
+      post :reject
+    end
+  end
+
   namespace :gate do
     post "push", to: "pushes#create"
   end

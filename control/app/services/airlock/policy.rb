@@ -21,7 +21,9 @@ module Airlock
 
     attr_reader :evidence_trailer, :protected_refs, :merge_identity, :agent_prefix,
                 :forbidden_paths, :human_review_paths, :test_dirs,
-                :secret_patterns, :skip_patterns, :reject_on_secret, :reject_on_skipped_tests
+                :secret_patterns, :skip_patterns, :reject_on_secret, :reject_on_skipped_tests,
+                :core_paths, :target_utilization, :failure_rate_alpha, :reviews_per_hour,
+                :min_threshold, :ambiguity_clarity, :max_batch, :ci_command, :ci_timeout
 
     def self.load(path = ENV.fetch("AIRLOCK_POLICY", Rails.root.join("config/airlock/airlock.toml").to_s))
       new(File.exist?(path) ? Tomlrb.load_file(path) : {})
@@ -40,6 +42,18 @@ module Airlock
       @human_review_paths = Array(paths.fetch("human_review", []))
       @test_dirs = Array(paths.fetch("tests", DEFAULT_TEST_DIRS))
       @secret_patterns = DEFAULT_SECRET_PATTERNS
+      risk = data.fetch("risk", {})
+      @core_paths = Array(paths.fetch("core", ["src/core/"]))
+      @target_utilization = risk.fetch("target_utilization", 0.7).to_f
+      @failure_rate_alpha = risk.fetch("failure_rate_alpha", 0.1).to_f
+      @reviews_per_hour = risk.fetch("human_reviews_per_hour", 6).to_f
+      @min_threshold = risk.fetch("min_threshold", 0.35).to_f
+      @ambiguity_clarity = risk.fetch("ambiguity_clarity", 0.4).to_f
+      queue = data.fetch("merge_queue", {})
+      @max_batch = queue.fetch("max_batch", 9).to_i
+      ci = data.fetch("ci", {})
+      @ci_command = ci.fetch("command", "cargo test -q")
+      @ci_timeout = ci.fetch("timeout_seconds", 900).to_i
       @skip_patterns = DEFAULT_SKIP_PATTERNS
     end
 

@@ -44,7 +44,7 @@ The push gate is ready. See [control/README.md](control/README.md) to run the se
 cd control && bundle install && bin/rails db:create db:migrate && bin/rails test
 ```
 
-Other components (merge queue, risk scoring, sandboxes, dashboard) will be documented as they land.
+The merge queue, risk scoring and human-attention control are described in [docs/risk.md](docs/risk.md). Sandboxes and the dashboard will be documented as they land.
 
 ## License
 

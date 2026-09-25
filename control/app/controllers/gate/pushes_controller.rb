@@ -1,12 +1,18 @@
 module Gate
   # Called by the pre-receive hook. 2xx admits the ref update; 403 rejects it.
   class PushesController < ActionController::API
+    REPORT_KEYS = %w[repo pusher ref old new commits files added_lines].freeze
+
     before_action :authenticate_hook!
 
     def create
       push = Airlock::Push.from_params(params.to_unsafe_h)
-      decision = Airlock::Gate.new(Airlock::Policy.load).evaluate(push)
-      record!(push, decision)
+      policy = Airlock::Policy.load
+      decision = Airlock::Gate.new(policy).evaluate(push)
+      row = record!(push, decision)
+      if decision.accepted? && (change = Airlock::Intake.admit(policy, push, row))
+        RouteChangeJob.perform_later(change.id, params.to_unsafe_h.slice(*REPORT_KEYS))
+      end
       render plain: decision.message, status: decision.accepted? ? :ok : :forbidden
     rescue KeyError, ActionController::ParameterMissing => e
       render plain: "malformed push report: #{e.message}", status: :unprocessable_entity
@@ -35,6 +41,7 @@ module Gate
                                payload: { repo: push.repo, ref: push.ref, pusher: push.pusher,
                                           review: decision.review, reasons: decision.reasons },
                                failure_mode: :required)
+        row
       end
     end
   end
