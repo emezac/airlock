@@ -8,28 +8,31 @@ class Airlock::RiskTest < ActiveSupport::TestCase
                               "added_lines" => Array.new(lines) { { "path" => files.first, "text" => "x" } })
   end
 
-  setup do
-    @risk = Airlock::Risk.new(Airlock::Policy.new({}), core_paths: ["src/core/"])
-    @calm = Airlock::Classifier::UNKNOWN
+  CALM = { "blast_radius" => "single_area", "test_signal" => "tests_modified", "dependency" => "none",
+           "goal_clarity" => "clear", "safety_flag" => "none" }.freeze
+
+  setup { @risk = Airlock::Risk.new }
+
+  test "a small, tested, clear change from a reliable agent is low risk" do
+    assert_operator @risk.score(push(["src/films/boat.rs"]), agent_failure_rate: 0.0, labels: CALM).value, :<, 0.1
   end
 
-  test "a small change with tests from a reliable agent is low risk" do
-    score = @risk.score(push(["src/films/boat.rs", "tests/boat.rs"]), agent_failure_rate: 0.0, classification: @calm)
-    assert_operator score.value, :<, 0.1
+  test "each risky label can only raise the risk" do
+    base = @risk.score(push(["a"]), agent_failure_rate: 0.1, labels: CALM).value
+    [%w[blast_radius core], %w[test_signal tests_weakened], %w[dependency added_or_changed],
+     %w[goal_clarity vague], %w[safety_flag touches_money]].each do |category, value|
+      raised = @risk.score(push(["a"]), agent_failure_rate: 0.1, labels: CALM.merge(category => value)).value
+      assert_operator raised, :>, base, "#{category}=#{value}"
+    end
   end
 
-  test "each signal can only raise the risk" do
-    base = @risk.score(push(["src/films/boat.rs"]), agent_failure_rate: 0.1, classification: @calm).value
-    assert_operator @risk.score(push(["src/core/canvas.rs"]), agent_failure_rate: 0.1, classification: @calm).value, :>, base
-    assert_operator @risk.score(push(["src/films/boat.rs", "Cargo.toml"]), agent_failure_rate: 0.1, classification: @calm).value, :>, base
-    assert_operator @risk.score(push(["src/films/boat.rs"]), agent_failure_rate: 0.6, classification: @calm).value, :>, base
-    flagged = @calm.with(block_probability: 0.8, source: "nano")
-    assert_operator @risk.score(push(["src/films/boat.rs"]), agent_failure_rate: 0.1, classification: flagged).value, :>, base
+  test "unknown or missing labels contribute nothing" do
+    assert_equal @risk.score(push(["a"]), agent_failure_rate: 0.1, labels: {}).value,
+                 @risk.score(push(["a"]), agent_failure_rate: 0.1, labels: CALM).value
   end
 
-  test "risk stays within [0, 1]" do
-    worst = @risk.score(push(Array.new(40) { |i| "src/core/f#{i}.rs" } + ["Cargo.toml"], lines: 900),
-                        agent_failure_rate: 1.0, classification: @calm.with(block_probability: 1.0))
-    assert_equal 1.0, worst.value
+  test "same labels, same score" do
+    a = @risk.score(push(["a"]), agent_failure_rate: 0.2, labels: CALM)
+    assert_equal a, @risk.score(push(["a"]), agent_failure_rate: 0.2, labels: CALM)
   end
 end

@@ -42,7 +42,7 @@ module Airlock
     private
 
     def service_rate(repo)
-      durations = Change.where(repo: repo).where.not(reviewed_at: nil, review_requested_at: nil)
+      durations = Change.where(repo: repo).where.not(reviewed_at: nil).where.not(review_requested_at: nil)
                         .order(reviewed_at: :desc).limit(50)
                         .pluck(:review_requested_at, :reviewed_at).map { |a, b| (b - a).to_f }
       return [@policy.reviews_per_hour, "prior"] if durations.size < MIN_REVIEW_SAMPLES

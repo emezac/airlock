@@ -1,8 +1,30 @@
 # Risk scoring, human attention and batching
 
-All three pieces live in `control/app/services/airlock/`. Each one is small enough to check by hand.
+All four pieces live in `control/app/services/airlock/`. Each one is small enough to check by hand.
 
-## 1. Risk score (`risk.rb`)
+## 1. Labels (`labels.rb`, `labeler.rb`)
+
+Every change gets labels from closed vocabularies. A value outside its vocabulary is rejected, whoever proposes it.
+
+| Category | Values | Owner |
+| --- | --- | --- |
+| `area` | from `[labels.area]` in the policy, plus `multiple`, `other` | rule (longest path prefix) |
+| `blast_radius` | `single_area`, `multi_area`, `core` | rule |
+| `test_signal` | `tests_added`, `tests_modified`, `no_tests`, `tests_weakened` | rule |
+| `dependency` | `none`, `added_or_changed` | rule |
+| `change_type` | `fix`, `feature`, `refactor`, `deps`, `config`, `test`, `docs`, `revert` | Nemotron 3 Nano |
+| `goal_clarity` | `clear`, `partial`, `vague` | Nemotron 3 Nano |
+| `safety_flag` | `none`, `touches_money`, `touches_auth`, `touches_data`, `weakens_safeguard` | Nemotron 3 Nano |
+
+Each label records its source: `rule`, `model` or `override`. The effective label per category is **override > rule > model**. Humans correct labels through `POST /reviews/:id/label`; the value is validated, every correction is appended to `label_overrides` and the agentkit audit log, and the change is re-routed with the new labels.
+
+**Why rules own four categories.** In a test on Token Factory (25 Sep 2026, temperature 0, thinking off), asking Nano for all categories at once gave different answers across runs for 3 of 5 changes, called a change with a test file `no_tests`, and missed a weakened test. Anything computable from paths and diffs is now a rule.
+
+**Why the model votes.** With only the three semantic categories and tighter definitions, 5 runs per change agreed 100 % on `change_type` and 96 % on `goal_clarity` and `safety_flag`, and "relax the visual threshold" became `weakens_safeguard`. Airlock asks 3 times and keeps the majority; the agreeing share (1/3, 2/3, 3/3) is the label's confidence. Each call costs about 150 tokens.
+
+**Routing is a table, not a judgement.** `[routing] human_when` lists `category:value` pairs that always go to a human, for example `safety_flag:touches_money`, `test_signal:tests_weakened`, `goal_clarity:vague`, `dependency:added_or_changed`.
+
+## 2. Risk score (`risk.rb`)
 
 A noisy-OR of independent signals, each `x_i` in [0, 1] with weight `w_i`:
 
@@ -12,33 +34,18 @@ risk = 1 - prod_i (1 - w_i * x_i)
 
 | Signal | Weight | x |
 | --- | --- | --- |
-| Dependency manifest changed (`Cargo.toml`, `Gemfile`, ...) | 0.5 | 0 or 1 |
-| Core code changed (`src/core/`) | 0.3 | 0 or 1 |
+| `dependency = added_or_changed` | 0.5 | 1 |
+| `blast_radius` | 0.3 | `core` 1, `multi_area` 0.5 |
+| `test_signal` | 0.6 | `tests_weakened` 1, `no_tests` 0.25 |
+| `goal_clarity` | 0.3 | `vague` 1, `partial` 0.5 |
+| `safety_flag` other than `none` | 0.5 | 1 |
 | Breadth | 0.3 | files changed / 20, capped at 1 |
 | Volume | 0.3 | lines added / 400, capped at 1 |
-| No test file touched | 0.15 | 0 or 1 |
 | Agent failure rate | 1.0 | exponentially forgotten rate, alpha = 0.1 |
-| Nemotron 3 Nano block probability | 0.4 | model output |
 
-Every signal can only raise the risk and none saturates it alone. The gate's sensitive paths still go to a human whatever the score.
+Every signal can only raise the risk and none saturates it alone. Because label signals read the effective labels, a human correction changes the score deterministically. Unknown labels contribute nothing.
 
-### Calibrating Nemotron 3 Nano
-
-Asking Nano "is this risky?" with a confidence flagged every test change as risky at 0.90 to 0.95, including a one-file caption fix with a test. That signal carries no information. A rubric with anchored bands and a separate clarity score gave graded answers on the same changes (Token Factory, 25 Sep 2026, temperature 0, thinking off, about 1 s and 210 tokens per call):
-
-| Change | Block probability | Clarity |
-| --- | --- | --- |
-| Fix caption overflow, with a test | 0.2 | 0.8 |
-| Add pastel theme preset | 0.3 | 0.5 |
-| Charge credits and add a payment crate | 0.6 | 0.7 |
-| "Make it more cinematic" in core code | 0.8 | 0.2 |
-| Relax the visual test threshold | 0.3 | 0.5 |
-
-The last row is a miss: weakening a test should score high. Rules catch deleted tests and skip markers; a rule for test-configuration files is still to do. The model advises; it never decides alone.
-
-A clarity below 0.4 sends the change to a human, because a vague goal cannot be verified.
-
-## 2. Human attention (`attention.rb`)
+## 3. Human attention (`attention.rb`)
 
 Reviews are a server with capacity mu per hour; changes arrive at lambda per hour; the share with risk above the threshold t goes to humans:
 
@@ -48,7 +55,7 @@ rho = lambda * P(risk > t) / mu        waiting time ~ 1 / (mu - lambda_h)
 
 Airlock takes the largest share humans can absorb, `s = target * mu / lambda` (target 0.7), and sets t to the `1 - s` quantile of recent risk scores, never below 0.35. More load raises the bar; it never lowers it. mu starts from a prior (6 reviews per hour) and switches to measured review times after 5 reviews.
 
-## 3. Batch size (`batch_math.rb`)
+## 4. Batch size (`batch_math.rb`)
 
 With each change failing independently with probability f (q = 1 - f), the expected CI runs of test-and-bisect on n changes are exactly:
 

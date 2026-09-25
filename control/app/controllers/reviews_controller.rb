@@ -10,6 +10,32 @@ class ReviewsController < ActionController::API
 
   def reject = decide("rejected")
 
+  # A human corrects one label. The value must belong to the closed vocabulary;
+  # every correction is kept and the change is re-routed with the new labels.
+  def label
+    policy = Airlock::Policy.load
+    change = Change.find(params[:id])
+    category = params.require(:category).to_s
+    value = Airlock::Labels.validate!(category, params.require(:value).to_s, policy)
+    reason = params[:reason].to_s.first(500).presence
+
+    Change.transaction do
+      previous = change.label(category)
+      override = change.labels.find_or_initialize_by(category: category, source: "override")
+      override.update!(value: value, confidence: 1.0, reason: reason)
+      change.label_overrides.create!(category: category, previous_value: previous, new_value: value,
+                                     action: previous ? "changed" : "added", reason: reason, reviewer: @reviewer)
+      Agentkit::Audit.record(event_type: "change.label_overridden", status: "ok", subject: change,
+                             payload: { category: category, from: previous, to: value, reviewer: @reviewer },
+                             failure_mode: :required)
+    end
+    change = Airlock::Intake.new(policy).reroute!(change.reload, Airlock::Push.from_params(change.report))
+    MergeQueueJob.perform_later(change.repo) if change.state == "queued"
+    render json: summary(change)
+  rescue Airlock::Labels::Invalid => e
+    render plain: e.message, status: :unprocessable_entity
+  end
+
   private
 
   def decide(state)
@@ -26,7 +52,9 @@ class ReviewsController < ActionController::API
   end
 
   def summary(change)
-    change.slice(:id, :repo, :ref, :pusher, :state, :risk_score, :review_reasons, :classification, :review_requested_at)
+    change.slice(:id, :repo, :ref, :pusher, :state, :risk_score, :review_reasons, :review_requested_at).merge(
+      labels: change.effective_labels.transform_values { |l| l.slice(:value, :source, :confidence, :reason) }
+    )
   end
 
   def authenticate_reviewer!

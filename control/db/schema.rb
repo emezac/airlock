@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_215311) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -880,6 +880,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
     t.index ["tenant_key"], name: "index_agentkit_wiki_pages_on_tenant_key"
   end
 
+  create_table "change_labels", force: :cascade do |t|
+    t.bigint "change_id", null: false
+    t.string "category", null: false
+    t.string "value", null: false
+    t.string "source", null: false
+    t.float "confidence"
+    t.string "reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["change_id", "category", "source"], name: "index_change_labels_on_change_id_and_category_and_source", unique: true
+    t.index ["change_id"], name: "index_change_labels_on_change_id"
+  end
+
   create_table "changes", force: :cascade do |t|
     t.string "repo", null: false
     t.string "ref", null: false
@@ -899,6 +912,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
     t.string "outcome"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "report", default: {}, null: false
     t.index ["gate_decision_id"], name: "index_changes_on_gate_decision_id"
     t.index ["merge_batch_id"], name: "index_changes_on_merge_batch_id"
     t.index ["repo", "state", "created_at"], name: "index_changes_on_repo_and_state_and_created_at"
@@ -920,6 +934,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
     t.datetime "updated_at", null: false
     t.index ["repo", "created_at"], name: "index_gate_decisions_on_repo_and_created_at"
     t.index ["verdict"], name: "index_gate_decisions_on_verdict"
+  end
+
+  create_table "label_overrides", force: :cascade do |t|
+    t.bigint "change_id", null: false
+    t.string "category", null: false
+    t.string "previous_value"
+    t.string "new_value", null: false
+    t.string "action", null: false
+    t.string "reason"
+    t.string "reviewer"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["change_id"], name: "index_label_overrides_on_change_id"
   end
 
   create_table "merge_batches", force: :cascade do |t|
@@ -952,5 +979,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_213446) do
   add_foreign_key "agentkit_suggestions", "agentkit_experiments", column: "experiment_id"
   add_foreign_key "agentkit_trace_phases", "agentkit_traces", column: "trace_id"
   add_foreign_key "agentkit_wiki_pages", "agentkit_memory_assets", column: "asset_id"
+  add_foreign_key "change_labels", "changes"
   add_foreign_key "changes", "gate_decisions"
+  add_foreign_key "label_overrides", "changes"
 end

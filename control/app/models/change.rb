@@ -4,6 +4,13 @@ class Change < ApplicationRecord
 
   belongs_to :gate_decision
   belongs_to :merge_batch, optional: true
+  has_many :labels, class_name: "ChangeLabel", dependent: :destroy
+  has_many :label_overrides, dependent: :destroy
+
+  # {category => ChangeLabel}, override > rule > model.
+  def effective_labels = Airlock::Labels.effective(labels.to_a)
+
+  def label(category) = effective_labels[category]&.value
 
   validates :repo, :ref, :pusher, :head_sha, presence: true
   validates :state, inclusion: { in: STATES }

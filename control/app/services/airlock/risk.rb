@@ -2,38 +2,38 @@ module Airlock
   # Risk score in [0, 1] as a noisy-OR of independent signals:
   #   risk = 1 - prod_i (1 - w_i * x_i),  x_i in [0, 1]
   # Each signal can only raise the risk, and no single weak signal saturates it.
+  # Label-driven signals come from the effective labels (override > rule > model),
+  # so a human correction changes the score deterministically.
   class Risk
     Score = Data.define(:value, :features)
 
-    WEIGHTS = {
-      dependency_change: 0.5,
-      core_change: 0.3,
-      breadth: 0.3,        # files changed, saturating at 20
-      volume: 0.3,         # lines added, saturating at 400
-      no_tests: 0.15,
-      agent_failure_rate: 1.0,
-      model_block: 0.4     # Nemotron Nano: probability a reviewer would block
-    }.freeze
-
     MANIFESTS = %w[Cargo.toml Cargo.lock Gemfile Gemfile.lock package.json requirements.txt].freeze
 
-    def initialize(policy, core_paths: ["src/core/"])
-      @policy = policy
-      @core_paths = core_paths
-    end
+    # [weight, {label value => x}]
+    LABEL_SIGNALS = {
+      "dependency" => [0.5, { "added_or_changed" => 1.0 }],
+      "blast_radius" => [0.3, { "core" => 1.0, "multi_area" => 0.5 }],
+      "test_signal" => [0.6, { "tests_weakened" => 1.0, "no_tests" => 0.25 }],
+      "goal_clarity" => [0.3, { "vague" => 1.0, "partial" => 0.5 }],
+      "safety_flag" => [0.5, { "touches_money" => 1.0, "touches_auth" => 1.0, "touches_data" => 1.0,
+                               "weakens_safeguard" => 1.0 }]
+    }.freeze
 
-    def score(push, agent_failure_rate:, classification:)
-      paths = push.files.map(&:path)
+    NUMERIC_WEIGHTS = { breadth: 0.3, volume: 0.3, agent_failure_rate: 1.0 }.freeze
+
+    def score(push, agent_failure_rate:, labels:)
       x = {
-        dependency_change: paths.any? { |p| MANIFESTS.include?(File.basename(p)) } ? 1.0 : 0.0,
-        core_change: paths.any? { |p| @core_paths.any? { |c| p.start_with?(c) } } ? 1.0 : 0.0,
-        breadth: [paths.size / 20.0, 1.0].min,
+        breadth: [push.files.size / 20.0, 1.0].min,
         volume: [push.added_lines.size / 400.0, 1.0].min,
-        no_tests: paths.none? { |p| @policy.test_path?(p) } ? 1.0 : 0.0,
-        agent_failure_rate: agent_failure_rate.to_f.clamp(0.0, 1.0),
-        model_block: classification.block_probability
+        agent_failure_rate: agent_failure_rate.to_f.clamp(0.0, 1.0)
       }
-      value = 1.0 - x.reduce(1.0) { |acc, (k, v)| acc * (1.0 - WEIGHTS.fetch(k) * v) }
+      weights = NUMERIC_WEIGHTS.dup
+      LABEL_SIGNALS.each do |category, (weight, map)|
+        key = :"label_#{category}"
+        x[key] = map.fetch(labels[category], 0.0)
+        weights[key] = weight
+      end
+      value = 1.0 - x.reduce(1.0) { |acc, (k, v)| acc * (1.0 - weights.fetch(k) * v) }
       Score.new(value: value.round(4), features: x)
     end
   end

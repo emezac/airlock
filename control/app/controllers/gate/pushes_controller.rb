@@ -10,8 +10,9 @@ module Gate
       policy = Airlock::Policy.load
       decision = Airlock::Gate.new(policy).evaluate(push)
       row = record!(push, decision)
-      if decision.accepted? && (change = Airlock::Intake.admit(policy, push, row))
-        RouteChangeJob.perform_later(change.id, params.to_unsafe_h.slice(*REPORT_KEYS))
+      report = params.to_unsafe_h.slice(*REPORT_KEYS)
+      if decision.accepted? && (change = Airlock::Intake.admit(policy, push, row, report))
+        RouteChangeJob.perform_later(change.id, report)
       end
       render plain: decision.message, status: decision.accepted? ? :ok : :forbidden
     rescue KeyError, ActionController::ParameterMissing => e
