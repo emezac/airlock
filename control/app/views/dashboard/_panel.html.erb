@@ -1,0 +1,69 @@
+<% a = s[:attention]; b = s[:batching]; rho = a[:expected_rho].to_f; target = a[:target_rho].to_f %>
+<section class="kpis">
+  <div class="kpi"><div class="label">Arrivals λ</div><div class="value"><%= a[:lambda_per_hour] %><small>/h</small></div></div>
+  <div class="kpi"><div class="label">Review capacity μ</div><div class="value"><%= a[:mu_per_hour] %><small>/h · <%= a[:mu_source] %></small></div></div>
+  <div class="kpi <%= rho > target ? 'warn' : '' %>">
+    <div class="label">Human load ρ</div>
+    <div class="value"><%= rho.round(2) %><small> target ≤ <%= target %></small></div>
+    <div class="meter"><span style="width: <%= [rho / 1.0, 1.0].min * 100 %>%"></span><i style="left: <%= target * 100 %>%"></i></div>
+  </div>
+  <div class="kpi"><div class="label">Risk threshold t</div><div class="value"><%= a[:threshold] %></div></div>
+  <div class="kpi"><div class="label">Agent failure rate f</div><div class="value"><%= b[:failure_rate] %></div></div>
+  <div class="kpi"><div class="label">Batch size k</div><div class="value"><%= b[:batch_size] %><small> · <%= b[:ci_runs_per_change] %> CI runs per change</small></div></div>
+</section>
+
+<p class="legend">Labels: <span class="chip">rule</span><span class="chip model">model</span><span class="chip override">human override</span></p>
+<section class="board">
+  <% { "review" => "Needs a human", "queue" => "Merge queue", "merged" => "Merged", "stopped" => "Stopped" }.each do |key, title| %>
+    <div class="column <%= key %>">
+      <h2><%= title %> <span class="count"><%= s[:columns][key].size %></span></h2>
+      <% if s[:columns][key].empty? %><p class="empty">Nothing here.</p><% end %>
+      <% s[:columns][key].each do |c| %>
+        <article class="card">
+          <div class="row">
+            <strong><%= c[:branch] %></strong>
+            <% if c[:risk] %><span class="risk" title="risk score"><%= c[:risk] %></span><% end %>
+          </div>
+          <div class="meta"><%= c[:agent] %> · <%= c[:state] %><% if c[:evidence] %> · evidence <%= c[:evidence] %><% end %></div>
+          <div class="labels">
+            <% c[:labels].each do |cat, l| %>
+              <% next if quiet_label?(l[:value]) %>
+              <span class="chip <%= l[:source] %>" title="<%= cat %>: <%= l[:value] %> (<%= l[:source] %>)"><b><%= label_short(cat) %></b><%= l[:value] %></span>
+            <% end %>
+          </div>
+          <% c[:reasons].each do |r| %><div class="reason"><%= r %></div><% end %>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</section>
+
+<section class="lower">
+  <div class="panel-box">
+    <h2>Merge batches</h2>
+    <% if s[:batches].empty? %><p class="empty">No batches yet.</p><% end %>
+    <div class="batches">
+      <% s[:batches].reverse_each do |bt| %>
+        <div class="batch <%= bt[:state] %>" title="batch <%= bt[:id] %>: <%= bt[:merged] %>/<%= bt[:size] %> merged, <%= bt[:ci_runs] %> CI runs">
+          <span><%= bt[:merged] %>/<%= bt[:size] %></span><small><%= pluralize(bt[:ci_runs], "CI run") %></small>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <div class="panel-box">
+    <h2>Agents</h2>
+    <table>
+      <thead><tr><th>Agent</th><th>Failure rate</th><th>Changes</th></tr></thead>
+      <tbody>
+        <% s[:agents].each do |ag| %>
+          <tr><td><%= ag[:agent] %></td><td><%= ag[:failure_rate] %></td><td><%= ag[:observations] %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel-box">
+    <h2>Gate</h2>
+    <p class="gate"><span class="ok"><%= s[:gate]["accept"].to_i %></span> accepted · <span class="bad"><%= s[:gate]["reject"].to_i %></span> rejected at push</p>
+    <p class="note">Updated <%= Time.iso8601(s[:generated_at]).strftime("%H:%M:%S") %> · repository <code><%= s[:repo] %></code></p>
+  </div>
+</section>

@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  get "dashboard", to: "dashboard#show"
+  root "dashboard#show"
+
   resources :reviews, only: :index do
     member do
       post :approve

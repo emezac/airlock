@@ -1,0 +1,20 @@
+<% content_for :title, "Airlock · #{@snapshot[:repo]}" %>
+<header class="top">
+  <div class="brand"><span class="mark"></span>Airlock</div>
+  <div class="sub">Nothing reaches <code>main</code> without reproducible evidence. Only risky changes reach a human.</div>
+</header>
+<main id="panel" data-src="<%= dashboard_path(repo: @snapshot[:repo], fragment: 1) %>">
+  <%= render "panel", s: @snapshot %>
+</main>
+<script>
+  // Swap in a fresh panel every 3 seconds; keep the old one if a request fails.
+  (() => {
+    const panel = document.getElementById("panel");
+    setInterval(async () => {
+      try {
+        const res = await fetch(panel.dataset.src, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+        if (res.ok) panel.innerHTML = await res.text();
+      } catch (_) {}
+    }, 3000);
+  })();
+</script>
