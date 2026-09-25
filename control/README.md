@@ -23,6 +23,10 @@ AIRLOCK_HOOK_SECRET=change-me bin/rails server -p 3000
 | `AIRLOCK_HOOK_SECRET` | Shared secret between the git hook and the gate. Required; without it every call is refused. |
 | `AIRLOCK_POLICY` | Path to the policy file. Default: `config/airlock/airlock.toml`. |
 | `NEBIUS_TOKEN` | Nebius Token Factory API key for Nemotron models. |
+| `AIRLOCK_REVIEW_TOKEN` | Bearer token for the human review API (`GET /reviews`, `POST /reviews/:id/approve`, `POST /reviews/:id/reject`, `POST /reviews/:id/label`). |
+| `AIRLOCK_GIT_ROOT` | Directory holding the bare repositories (`<repo>.git`) the merge queue integrates into. |
+| `AIRLOCK_WORK_ROOT` | Where the merge queue keeps its working clones. Default: `tmp/workspaces`. |
+| `AIRLOCK_URL` | Gate URL the merge queue's own pushes go through. |
 | `AGENTKIT_AUDIT_KEY` | Audit signing key. Required in production. |
 | `SECRET_KEY_BASE` | Rails secret. Required in production. |
 

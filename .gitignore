@@ -10,7 +10,7 @@ vendor/bundle/
 target/
 out/
 *.mp4
-airlock.toml
+/airlock.toml
 control/config/master.key
 control/config/credentials/*.key
 control/storage/
