@@ -22,7 +22,8 @@ AIRLOCK_HOOK_SECRET=change-me bin/rails server -p 3000
 | --- | --- |
 | `AIRLOCK_HOOK_SECRET` | Shared secret between the git hook and the gate. Required; without it every call is refused. |
 | `AIRLOCK_POLICY` | Path to the policy file. Default: `config/airlock/airlock.toml`. |
-| `NEBIUS_TOKEN` | Nebius Token Factory API key for Nemotron models. |
+| `NEBIUS_TOKEN` | Nebius Token Factory API key for Nemotron models and Sandboxes. |
+| `NEBIUS_PROJECT_ID` | Nebius project id, sent as the `Project` header to Token Factory Sandboxes. Without it, evidence checks are skipped. |
 | `AIRLOCK_REVIEW_TOKEN` | Bearer token for the human review API (`GET /reviews`, `POST /reviews/:id/approve`, `POST /reviews/:id/reject`, `POST /reviews/:id/label`). |
 | `AIRLOCK_GIT_ROOT` | Directory holding the bare repositories (`<repo>.git`) the merge queue integrates into. |
 | `AIRLOCK_WORK_ROOT` | Where the merge queue keeps its working clones. Default: `tmp/workspaces`. |
@@ -46,7 +47,7 @@ cp ../hooks/pre-receive /srv/git/frameline.git/hooks/pre-receive
 3. Agents cannot touch forbidden paths.
 4. No added secrets.
 5. No deleted test files or new skip markers.
-6. Every agent commit carries `Airlock-Evidence: sandbox=<id> checkpoint=<id> cmd="<command>"`.
+6. Every agent commit carries `Airlock-Evidence: sandbox=<id> checkpoint=<id> cmd="<command>"`, where the command is on the policy's allow list and has no shell operators. See [../docs/evidence.md](../docs/evidence.md).
 7. Sensitive paths are accepted but routed to human review.
 
 The gate is deterministic: the same push report always gets the same decision. No model is consulted.

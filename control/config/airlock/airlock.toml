@@ -46,6 +46,15 @@ min_threshold = 0.35          # never auto-merge above this risk, whatever the l
 [merge_queue]
 max_batch = 9
 
+[evidence]
+verify = true                 # re-run each agent's evidence command in a clean sandbox
+# The evidence command must be exactly one of these, optionally with arguments.
+allowed_commands = ["cargo test", "cargo run --release --bin frameline"]
+
+[sandbox]
+enabled = true                # needs NEBIUS_TOKEN and NEBIUS_PROJECT_ID
+image = "ubuntu:latest"       # replace with the prebuilt Rust image for Frameline
+
 [ci]
 command = "cargo test -q"
 timeout_seconds = 900

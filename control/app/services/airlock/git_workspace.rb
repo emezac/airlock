@@ -47,6 +47,9 @@ module Airlock
 
     def head = run!("git", "rev-parse", "HEAD").strip
 
+    # Detached checkout of a pushed branch, clean of anything left behind.
+    def checkout(ref) = reset_to(ref.sub(%r{\Arefs/heads/}, "refs/remotes/origin/"))
+
     def contains?(sha, ref)
       _, status = capture("git", "merge-base", "--is-ancestor", ref.sub(%r{\Arefs/heads/}, "refs/remotes/origin/"), sha)
       status.success?

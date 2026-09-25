@@ -69,8 +69,24 @@ module Airlock
 
       push.commits.filter_map do |commit|
         evidence = Evidence.parse(commit.trailers[@policy.evidence_trailer])
-        "commit #{commit.sha[0, 12]} lacks a valid #{@policy.evidence_trailer} trailer (sandbox, checkpoint, cmd)" unless evidence
+        next "commit #{commit.sha[0, 12]} lacks a valid #{@policy.evidence_trailer} trailer (sandbox, checkpoint, cmd)" unless evidence
+
+        command_violation(commit, evidence.cmd)
       end
+    end
+
+    # The evidence command is re-run in a sandbox, so it must be one command
+    # from the allowed list, without chaining or substitution.
+    SHELL_META = /[;&|`$<>\n\\]/
+
+    def command_violation(commit, cmd)
+      sha = commit.sha[0, 12]
+      return "commit #{sha} evidence command uses shell operators: #{cmd}" if cmd.match?(SHELL_META)
+
+      allowed = @policy.allowed_evidence_commands
+      return nil if allowed.empty? || allowed.any? { |prefix| cmd == prefix || cmd.start_with?("#{prefix} ") }
+
+      "commit #{sha} evidence command is not allowed: #{cmd} (allowed: #{allowed.join(', ')})"
     end
 
     def review_reasons_for(push)

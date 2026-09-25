@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_215311) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_221316) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -913,6 +913,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_215311) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "report", default: {}, null: false
+    t.string "evidence_status"
+    t.string "evidence_command"
+    t.string "evidence_checkpoint"
+    t.text "evidence_output"
     t.index ["gate_decision_id"], name: "index_changes_on_gate_decision_id"
     t.index ["merge_batch_id"], name: "index_changes_on_merge_batch_id"
     t.index ["repo", "state", "created_at"], name: "index_changes_on_repo_and_state_and_created_at"

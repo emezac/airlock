@@ -13,3 +13,14 @@ module ActiveSupport
     # Add more helper methods to be used by all tests here...
   end
 end
+
+# Tests never call Token Factory: the labeler runs with rules only.
+class Airlock::Labeler
+  def self.stub_any_instance_model_free
+    original = instance_method(:model_labels)
+    define_method(:model_labels) { |_push| [] }
+    yield
+  ensure
+    define_method(:model_labels, original)
+  end
+end

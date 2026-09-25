@@ -23,7 +23,8 @@ module Airlock
                 :forbidden_paths, :human_review_paths, :test_dirs,
                 :secret_patterns, :skip_patterns, :reject_on_secret, :reject_on_skipped_tests,
                 :core_paths, :area_labels, :human_when, :target_utilization, :failure_rate_alpha, :reviews_per_hour,
-                :min_threshold, :ambiguity_clarity, :max_batch, :ci_command, :ci_timeout
+                :min_threshold, :ambiguity_clarity, :max_batch, :ci_command, :ci_timeout,
+                :verify_evidence, :allowed_evidence_commands, :sandbox_enabled, :sandbox_image
 
     def self.load(path = ENV.fetch("AIRLOCK_POLICY", Rails.root.join("config/airlock/airlock.toml").to_s))
       new(File.exist?(path) ? Tomlrb.load_file(path) : {})
@@ -60,6 +61,12 @@ module Airlock
       ci = data.fetch("ci", {})
       @ci_command = ci.fetch("command", "cargo test -q")
       @ci_timeout = ci.fetch("timeout_seconds", 900).to_i
+      evidence = data.fetch("evidence", {})
+      @verify_evidence = evidence.fetch("verify", true)
+      @allowed_evidence_commands = Array(evidence.fetch("allowed_commands", []))
+      sandbox = data.fetch("sandbox", {})
+      @sandbox_enabled = sandbox.fetch("enabled", true)
+      @sandbox_image = sandbox.fetch("image", "ubuntu:latest")
       @skip_patterns = DEFAULT_SKIP_PATTERNS
     end
 
