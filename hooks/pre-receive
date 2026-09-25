@@ -1,22 +1,74 @@
-#!/usr/bin/env bash
-# Sends each ref update to the Airlock gate. A non-2xx answer rejects the push.
-set -euo pipefail
+#!/usr/bin/env ruby
+# Airlock pre-receive hook. Summarizes each ref update (commits, changed files,
+# added lines) and asks the Airlock gate. Any non-2xx answer rejects the push,
+# and so does an unreachable gate: the hook fails closed.
+require "json"
+require "net/http"
+require "open3"
+require "uri"
 
-AIRLOCK_URL="${AIRLOCK_URL:?AIRLOCK_URL is not set}"
-REPO="${AIRLOCK_REPO:-$(basename "$PWD" .git)}"
-PUSHER="${REMOTE_USER:-${GL_USERNAME:-unknown}}"
+ZERO = "0" * 40
+MAX_ADDED_BYTES = 512 * 1024
 
-status=0
-while read -r old new ref; do
-  body=$(printf '{"repo":"%s","pusher":"%s","ref":"%s","old":"%s","new":"%s"}' \
-    "$REPO" "$PUSHER" "$ref" "$old" "$new")
-  response=$(curl -sS -m 30 -w '\n%{http_code}' -H 'Content-Type: application/json' \
-    -d "$body" "$AIRLOCK_URL/gate/push") || { echo "airlock: gate unreachable" >&2; exit 1; }
-  code=${response##*$'\n'}
-  message=${response%$'\n'*}
-  [ -n "$message" ] && echo "airlock: $message" >&2
-  if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
-    status=1
-  fi
-done
-exit $status
+def git(*args)
+  out, status = Open3.capture2("git", *args)
+  raise "git #{args.first} failed" unless status.success?
+  out
+end
+
+def base_for(old, new)
+  return old unless old == ZERO
+  # New branch: compare against main when it exists, else against the empty tree.
+  main = `git rev-parse -q --verify refs/heads/main`.strip
+  main.empty? ? git("hash-object", "-t", "tree", "/dev/null").strip : git("merge-base", main, new).strip
+end
+
+def report(ref, old, new)
+  body = { repo: ENV.fetch("AIRLOCK_REPO", File.basename(Dir.pwd, ".git")),
+           pusher: ENV["REMOTE_USER"] || ENV["AIRLOCK_PUSHER"] || "unknown",
+           ref: ref, old: old, new: new, commits: [], files: [], added_lines: [] }
+  return body if new == ZERO
+
+  range = old == ZERO ? [new, "--not", "--branches", "--tags"] : ["#{old}..#{new}"]
+  body[:commits] = git("rev-list", "--reverse", *range).split.map do |sha|
+    { sha: sha, author: git("log", "-1", "--format=%ae", sha).strip, message: git("log", "-1", "--format=%B", sha) }
+  end
+
+  base = base_for(old, new)
+  body[:files] = git("diff", "--name-status", "--no-renames", base, new).lines.map do |line|
+    status, path = line.chomp.split("\t", 2)
+    { path: path, status: status }
+  end
+
+  path = nil
+  budget = MAX_ADDED_BYTES
+  git("diff", "-U0", "--no-color", "--no-renames", base, new).each_line do |line|
+    if line.start_with?("+++ ")
+      path = line.chomp.sub(%r{\A\+\+\+ (b/)?}, "")
+    elsif line.start_with?("+") && path && budget.positive?
+      text = line.chomp[1..]
+      budget -= text.bytesize
+      body[:added_lines] << { path: path, text: text }
+    end
+  end
+  body
+end
+
+url = URI.join(ENV.fetch("AIRLOCK_URL") { abort "airlock: AIRLOCK_URL is not set" }, "/gate/push")
+failed = false
+$stdin.each_line do |line|
+  old, new, ref = line.split
+  begin
+    request = Net::HTTP::Post.new(url, "Content-Type" => "application/json",
+                                       "X-Airlock-Hook-Secret" => ENV.fetch("AIRLOCK_HOOK_SECRET", ""))
+    request.body = JSON.generate(report(ref, old, new))
+    response = Net::HTTP.start(url.host, url.port, use_ssl: url.scheme == "https",
+                               open_timeout: 5, read_timeout: 30) { |http| http.request(request) }
+    warn "airlock: #{response.body}" unless response.body.to_s.empty?
+    failed ||= !response.is_a?(Net::HTTPSuccess)
+  rescue StandardError => e
+    warn "airlock: gate unreachable or report failed (#{e.class}); push rejected"
+    failed = true
+  end
+end
+exit(failed ? 1 : 0)

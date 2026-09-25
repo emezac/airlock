@@ -38,7 +38,13 @@ The demo target repository, **Frameline** (a storyboard and animatic maker built
 
 ## Setup
 
-Setup instructions will be added as each component lands.
+The push gate is ready. See [control/README.md](control/README.md) to run the service and install `hooks/pre-receive` on a bare repository.
+
+```sh
+cd control && bundle install && bin/rails db:create db:migrate && bin/rails test
+```
+
+Other components (merge queue, risk scoring, sandboxes, dashboard) will be documented as they land.
 
 ## License
 
