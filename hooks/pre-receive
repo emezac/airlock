@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Sends each ref update to the Airlock gate. A non-2xx answer rejects the push.
+set -euo pipefail
+
+AIRLOCK_URL="${AIRLOCK_URL:?AIRLOCK_URL is not set}"
+REPO="${AIRLOCK_REPO:-$(basename "$PWD" .git)}"
+PUSHER="${REMOTE_USER:-${GL_USERNAME:-unknown}}"
+
+status=0
+while read -r old new ref; do
+  body=$(printf '{"repo":"%s","pusher":"%s","ref":"%s","old":"%s","new":"%s"}' \
+    "$REPO" "$PUSHER" "$ref" "$old" "$new")
+  response=$(curl -sS -m 30 -w '\n%{http_code}' -H 'Content-Type: application/json' \
+    -d "$body" "$AIRLOCK_URL/gate/push") || { echo "airlock: gate unreachable" >&2; exit 1; }
+  code=${response##*$'\n'}
+  message=${response%$'\n'*}
+  [ -n "$message" ] && echo "airlock: $message" >&2
+  if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+    status=1
+  fi
+done
+exit $status

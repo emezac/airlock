@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+*.log
+tmp/
+log/
+node_modules/
+vendor/bundle/
+.bundle/
+target/
+out/
+*.mp4
+airlock.toml

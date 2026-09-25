@@ -1,0 +1,22 @@
+# Airlock policy. Copy to airlock.toml in the target repository.
+
+[gate]
+require_evidence_trailer = "Airlock-Evidence"
+reject_on_secret = true
+reject_on_deleted_or_skipped_tests = true
+
+[paths]
+# Changes here always go to a human.
+human_review = ["billing/", "sharing/", "auth/", "migrations/", "infra/", "Cargo.toml"]
+# Agents may not touch these paths at all.
+forbidden = ["infra/"]
+
+[risk]
+target_utilization = 0.7   # keep human queue utilization rho below this
+failure_rate_alpha = 0.1   # exponential forgetting for per-agent failure rate
+
+[merge_queue]
+max_batch = 9              # batch size is chosen online from the observed failure rate
+
+[audit]
+sample_rate = 0.10         # share of auto-merged changes audited after merge
