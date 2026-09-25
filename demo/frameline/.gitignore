@@ -1,0 +1,5 @@
+/target
+/assets
+/out
+tests/golden/*.actual.png
+*.mp4

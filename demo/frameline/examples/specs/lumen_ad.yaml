@@ -1,0 +1,38 @@
+title: "Lumen desk lamp, 30 second spot"
+format: "16:9"
+style: riso_pop
+scenes:
+  - name: Hook
+    duration: 3
+    shot: wide
+    elements:
+      - { kind: boat, x: 0.3, y: 0.55, motion: bob }
+      - { kind: text, x: 0.62, y: 0.4, label: "LATE NIGHT?", scale: 1.2 }
+    caption: "Your desk at midnight."
+  - name: Reveal
+    duration: 4
+    shot: medium
+    camera: { from: { x: 0.5, y: 0.5, zoom: 1.0 }, to: { x: 0.5, y: 0.45, zoom: 1.15 } }
+    elements:
+      - { kind: product, x: 0.5, y: 0.45, label: "LUMEN", scale: 1.2 }
+    caption: "Meet Lumen."
+  - name: Calm
+    duration: 4
+    shot: wide
+    style: pencil_minimal
+    elements:
+      - { kind: balloon, x: 0.5, y: 0.55, scale: 0.7, motion: rise }
+    caption: "Warm light that follows your focus."
+  - name: Detail
+    duration: 3
+    shot: close_up
+    elements:
+      - { kind: fly, x: 0.5, y: 0.45, scale: 0.8 }
+    caption: "No flicker. Not even for a fly."
+  - name: Sign-off
+    duration: 3
+    shot: wide
+    elements:
+      - { kind: product, x: 0.5, y: 0.45, label: "LUMEN" }
+      - { kind: text, x: 0.5, y: 0.72, label: "LUMEN.LIGHT", scale: 0.7 }
+    caption: "Lumen. Light that listens."

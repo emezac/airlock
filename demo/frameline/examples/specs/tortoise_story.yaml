@@ -1,0 +1,21 @@
+title: "The patient tortoise"
+format: "9:16"
+style: paper_ink
+scenes:
+  - name: Morning
+    duration: 3
+    elements:
+      - { kind: tortoise, x: 0.5, y: 0.7, scale: 0.9 }
+    caption: "Every morning she looked up."
+  - name: The balloon
+    duration: 3
+    shot: medium
+    elements:
+      - { kind: balloon, x: 0.5, y: 0.4, scale: 0.8, motion: drift }
+    caption: "One day, the sky came down."
+  - name: Lift-off
+    duration: 4
+    style: screen_sea
+    elements:
+      - { kind: balloon, x: 0.5, y: 0.45, scale: 0.8, motion: rise }
+    caption: "She did not hurry. She rose."

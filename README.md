@@ -23,10 +23,11 @@ When ten or a hundred coding agents work in parallel, human review becomes the b
 | `control/` | Airlock service: gate API, risk scoring, merge queue, dashboard (Rails + agentkit-rails) |
 | `hooks/` | Git server hooks; `pre-receive` calls the gate |
 | `sandbox/` | OCI image and client for Token Factory Sandboxes |
+| `demo/frameline/` | Frameline, the demo target: storyboards and animatics from YAML, with visual regression tests |
 | `docs/` | Architecture and design notes |
 | `airlock.toml.example` | Example policy |
 
-The demo target repository, **Frameline** (a storyboard and animatic maker built on the `taller_film` Rust renderer), lives in a separate repository. Agents change it only through Airlock.
+The demo target, **Frameline** (a storyboard and animatic maker built on the `taller_film` Rust renderer), is kept here as source. For a run it is pushed as its own repository behind the gate, and agents change it only through Airlock. See [demo/frameline/README.md](demo/frameline/README.md).
 
 ## Models and services
 
