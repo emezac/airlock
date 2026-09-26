@@ -19,7 +19,7 @@ The code lives in the control service:
 ## Status
 
 - **Built:** the client and the runner, tested against a fake Sandboxes API.
-- **Waiting:** our account's beta access. Until it arrives, evidence re-runs are recorded as skipped, and CI and renders use the local runner.
+- **Waiting:** our account's beta access (`GET /whoami` still reports every permission off). Until it arrives, `.env` sets `NEBIUS_SANDBOX=false`: evidence re-runs are recorded as skipped, and checks, CI and renders use the local runner. When access arrives, set it to `true`; nothing else changes.
 - **Next, once access arrives:**
   1. Check `GET /whoami`.
   2. Run one command end to end.

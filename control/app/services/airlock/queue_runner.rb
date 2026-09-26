@@ -31,7 +31,7 @@ module Airlock
 
     # Agent-supplied evidence commands only ever run in a sandbox.
     def sandbox_runner(policy, timeout: policy.ci_timeout)
-      return nil unless policy.sandbox_enabled && Sandboxes::Client.configured?
+      return nil unless Sandboxes.available?(policy)
 
       Runners::Sandbox.new(client: Sandboxes::Client.new, image: policy.sandbox_image,
                            command: policy.ci_command, timeout: timeout)

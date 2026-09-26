@@ -38,11 +38,11 @@ Agents' checks, evidence re-runs, merge-queue CI and renders all go through a ru
 
 ## Current state
 
-The client, both runners, the file collection and the evidence verifier are built and tested against a fake Sandboxes API. Our Token Factory account is waiting for Sandboxes beta access, so today:
+The client, both runners, the file collection and the evidence verifier are built and tested against a fake Sandboxes API. Our Token Factory account is waiting for Sandboxes beta access, so we run with `NEBIUS_SANDBOX=false`. That keeps the token for the Nemotron models and switches every execution to the local runner. Sandboxes are used only when all three switches are on: the policy's `[sandbox] enabled`, `NEBIUS_SANDBOX` (unset means on), and credentials (`Airlock::Sandboxes.status` says which one is off). Today:
 
 - evidence re-runs are recorded as `skipped` ("no sandbox configured"), never run on the host;
 - the agents' checks, the merge queue's CI and renders use the local runner;
-- the Floor's sandbox lab says "local runner (development)".
+- the Floor's sandbox lab says "local runner" and why.
 
 ## What forged evidence looks like
 

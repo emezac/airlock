@@ -29,7 +29,7 @@ class RouteChangeJob < ApplicationJob
     verifier = Airlock::QueueRunner.verifier(change.repo, policy: policy)
     unless verifier
       change.update!(evidence_status: "skipped")
-      floor_evidence(change, "skipped", "no sandbox configured")
+      floor_evidence(change, "skipped", "no sandbox: #{Airlock::Sandboxes.status(policy).reason}")
       return true
     end
 

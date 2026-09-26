@@ -33,7 +33,8 @@ module Airlock
         end,
         counts: { merged: changes.count { |c| c.state == "merged" }, rejected_at_gate: GateDecision.where(repo: @repo, verdict: "reject").count,
                   reviews: changes.count { |c| c.state == "needs_review" } },
-        sandbox: @policy.sandbox_enabled && Sandboxes::Client.configured?,
+        sandbox: Sandboxes.available?(@policy),
+        sandbox_reason: Sandboxes.status(@policy).reason,
         render: latest_render
       }
     end

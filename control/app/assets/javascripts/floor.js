@@ -101,6 +101,7 @@ const TOUR = ["desks", "lab", "gate", "labels", "review", "queue", "doctor", "ma
 
 const SPEED = { agent: 150, parcel: 190 };
 let sandboxOn = false;
+let sandboxReason = "";
 const agents = new Map();
 const parcels = new Map();
 const flashes = {};          // station -> {color, until, text}
@@ -271,7 +272,7 @@ function describe(ev) {
     }
     case "gate.accepted": return `gate accepts ${ev.actor}'s push (${ev.task})`;
     case "gate.rejected": return `gate refuses ${ev.actor}: ${ev.text}`;
-    case "evidence.skipped": return `evidence not re-run for ${ev.task}: no sandbox configured`;
+    case "evidence.skipped": return `evidence not re-run for ${ev.task}: ${ev.text || "no sandbox"}`;
     case "evidence.verified": return `evidence reproduced in a sandbox for ${ev.task}`;
     case "evidence.failed": return `evidence did not reproduce for ${ev.task}; rejected`;
     case "change.routed": return d.state === "needs_review" ? `${ev.task} goes to a person: ${short(ev.text, 80)}` : `${ev.task} goes to the merge queue (risk ${d.risk ?? "?"})`;
@@ -552,7 +553,7 @@ function drawLab() {
   const f = flashes.lab; const on = f && now < f.until;
   ctx.beginPath(); ctx.arc(r.x + r.w - 20, r.y + 20, 7, 0, Math.PI * 2);
   ctx.fillStyle = on ? f.color : T.line; ctx.fill(); ctx.strokeStyle = T.ink; ctx.lineWidth = 1.2; ctx.stroke();
-  text(sandboxOn ? "no network · clean tree" : "local runner (development)", r.x + 10, r.y + r.h - 12,
+  text(sandboxOn ? "no network · clean tree" : `local runner · ${sandboxReason.replace(/ \(.*\)$/, "") || "no sandbox"}`, r.x + 10, r.y + r.h - 12,
        { size: 10, color: sandboxOn ? T.muted : T.warn, weight: sandboxOn ? 500 : 700 });
 }
 
@@ -780,6 +781,7 @@ async function loadState() {
   const recent = await (await fetch(withParams(urls.events, { after: Math.max(0, s.cursor - LOG_MAX) }))).json().catch(() => ({ events: [] }));
   recent.events.forEach((ev) => log(ev, describe(ev)));
   sandboxOn = !!s.sandbox;
+  sandboxReason = s.sandbox_reason || "";
   if (s.render) loadScreen(s.render.sha, s.render.board);
   cursor = s.cursor;
   counters.merged = s.counts.merged;

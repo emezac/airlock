@@ -43,6 +43,7 @@ To run the demo end to end, see [../docs/demo.md](../docs/demo.md).
 | `AIRLOCK_BRIEF`, `AIRLOCK_BACKLOG` | The brief and the backlog. Default: `../demo/brief.yml` and `../demo/backlog.yml`. |
 | `NEBIUS_TOKEN` | Nebius Token Factory API key, for the Nemotron models and for Sandboxes. |
 | `NEBIUS_PROJECT_ID` | Nebius project id, sent as the `Project` header to Sandboxes. Without it, evidence re-runs are recorded as skipped and CI runs locally. |
+| `NEBIUS_SANDBOX` | Switch for Token Factory Sandboxes: `false` keeps the token for the models but runs everything on the local runner and skips evidence re-runs. Unset means on. |
 | `NEBIUS_API_BASE`, `NEBIUS_SANDBOXES_BASE` | Override the Token Factory endpoints. |
 | `AIRLOCK_RELAY_OUT`, `AIRLOCK_RELAY_IN` | Development only: relay model calls through files to a machine that holds the token (see [../docs/workers.md](../docs/workers.md)). |
 | `AGENTKIT_AUDIT_KEY` | Audit signing key. Required in production. |
