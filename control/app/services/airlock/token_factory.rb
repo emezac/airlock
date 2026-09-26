@@ -26,7 +26,7 @@ module Airlock
       body[:response_format] = { type: "json_object" } if json
       request = Net::HTTP::Post.new(@uri, "Content-Type" => "application/json", "Authorization" => "Bearer #{@token}")
       request.body = JSON.generate(body)
-      response = Net::HTTP.start(@uri.host, @uri.port, use_ssl: true, open_timeout: 10, read_timeout: 120) do |http|
+      response = Net::HTTP.start(@uri.host, @uri.port, use_ssl: true, open_timeout: 10, read_timeout: 300) do |http|
         http.request(request)
       end
       raise Error, "Token Factory #{response.code}" unless response.is_a?(Net::HTTPSuccess)

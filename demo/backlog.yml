@@ -1,0 +1,68 @@
+# Frameline backlog for the Airlock demo. Each task is one agent assignment.
+# `context` lists the files the agent reads first; `check` is the command whose
+# passing run the agent cites as evidence (it must be allowed by the policy).
+#
+# The mix is deliberate: most tasks should merge on their own, one changes the
+# golden images (a human sees the new board), one is vague on purpose.
+# Files every agent reads before its task's own context: the crate map.
+context: [src/lib.rs]
+
+tasks:
+  - id: FL-1
+    title: Add a sway motion
+    instructions: |
+      Add a new element motion called "sway": the element tilts left and right
+      around its position, like a boat on small waves. Implement it as a small
+      horizontal oscillation (about 6 units of `unit`, one full swing per
+      second). Add "sway" to the allowed motions, add a validation test in
+      tests/spec.rs that accepts it, and add it to the table in README.md.
+      Do not change any example spec.
+    context: [src/spec.rs, tests/spec.rs, README.md]
+    check: cargo test --release
+
+  - id: FL-2
+    title: Add a cafe example
+    instructions: |
+      Add examples/specs/cafe_morning.yaml: a 1:1 spec in the pencil_minimal
+      style with three scenes (about 3 seconds each) that tell a tiny story of
+      a paper boat on a coffee cup at dawn. Use only the existing element kinds,
+      shots and motions, and short captions. New examples get golden images, so
+      set update_goldens.
+    context: [examples/specs/tortoise_story.yaml, README.md]
+    check: cargo test --release
+
+  - id: FL-3
+    title: Render one scene of the board
+    instructions: |
+      Add an optional `--scene <N>` argument (1-based) to `frameline board` that
+      renders only that scene's key frame as a single tile with its label. Out of
+      range numbers must fail with a clear error. Keep the default behaviour.
+      Document the option in README.md.
+    context: [src/bin/frameline.rs, src/board.rs, README.md]
+    check: cargo test --release
+
+  - id: FL-4
+    title: Reject duplicate scene names
+    instructions: |
+      Scene names label the storyboard, so two scenes with the same name
+      (ignoring case and surrounding spaces) are a mistake. Make validation
+      reject them with an error that names both scene numbers, and add a test
+      in tests/spec.rs.
+    context: [src/spec.rs, tests/spec.rs]
+    check: cargo test --release
+
+  - id: FL-5
+    title: Add an animatic summary to check
+    instructions: |
+      `frameline check` prints one summary line. Also print one line per scene:
+      number, name, duration, shot and the element kinds, for example
+      `  2  Reveal  4.0s  medium  product`. Keep the first line unchanged.
+    context: [src/bin/frameline.rs, src/spec.rs]
+    check: cargo test --release
+
+  - id: FL-6
+    title: Make the boards nicer
+    instructions: |
+      The storyboards could look better. Improve them.
+    context: [src/board.rs]
+    check: cargo test --release

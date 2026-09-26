@@ -8,11 +8,12 @@ module Airlock
 
     attr_reader :path
 
-    def initialize(remote:, path:, identity: "airlock", env: {})
+    def initialize(remote:, path:, identity: "airlock", env: {}, author: "Airlock merge queue")
       @remote = remote
       @path = path
       @identity = identity
       @env = env
+      @author = author
     end
 
     def prepare!
@@ -20,7 +21,7 @@ module Airlock
         FileUtils.mkdir_p(File.dirname(@path))
         run!("git", "clone", "-q", @remote, @path, chdir: nil)
       end
-      run!("git", "config", "user.name", "Airlock merge queue")
+      run!("git", "config", "user.name", @author)
       run!("git", "config", "user.email", "#{@identity}@airlock.local")
       fetch!
     end
@@ -57,6 +58,40 @@ module Airlock
 
     def push_main!(sha)
       run!("git", "push", "-q", "origin", "#{sha}:refs/heads/main", env: { "REMOTE_USER" => @identity })
+    end
+
+    # --- Used by agent workers -------------------------------------------
+
+    # A fresh branch at the current main, with nothing left over.
+    def start_branch(name)
+      run!("git", "checkout", "-q", "-B", name, "refs/remotes/origin/main")
+      run!("git", "reset", "-q", "--hard", "refs/remotes/origin/main")
+      run!("git", "clean", "-qfdx", "-e", "target/")
+    end
+
+    def changed? = !run!("git", "status", "--porcelain").strip.empty?
+
+    def commit_all(message)
+      run!("git", "add", "-A")
+      run!("git", "commit", "-q", "--allow-empty", "-m", message)
+      head
+    end
+
+    # One commit on top of main with the same tree as HEAD, so evidence
+    # gathered on HEAD's tree still describes it.
+    def squash(message)
+      run!("git", "reset", "-q", "--soft", "refs/remotes/origin/main")
+      run!("git", "commit", "-q", "-m", message)
+      head
+    end
+
+    def diff_stat = run!("git", "diff", "--stat", "refs/remotes/origin/main", "HEAD")
+
+    # Pushes HEAD to refs/heads/<branch> as <pusher>. Returns [accepted, output].
+    def push_branch(branch, pusher)
+      out, status = capture("git", "push", "-q", "--force", "origin", "HEAD:refs/heads/#{branch}",
+                            env: { "REMOTE_USER" => pusher })
+      [status.success?, out]
     end
 
     private

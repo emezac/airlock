@@ -9,7 +9,7 @@ reject_on_secret = true
 reject_on_deleted_or_skipped_tests = true
 
 [paths]
-human_review = ["billing/", "sharing/", "auth/", "migrations/", "Cargo.toml"]
+human_review = ["billing/", "sharing/", "auth/", "migrations/", "Cargo.toml", "tests/golden/"]  # golden images: a human sees every visual change
 forbidden = ["infra/"]
 tests = ["tests/", "test/", "spec/"]
 core = ["src/core/"]         # changes here raise risk
@@ -17,6 +17,10 @@ core = ["src/core/"]         # changes here raise risk
 [labels.area]
 # Path prefix -> area label. The allowed "area" values are these plus "multiple" and "other".
 "src/core/" = "core_renderer"
+"src/spec.rs" = "spec"
+"src/board.rs" = "board"
+"src/bin/" = "cli"
+"examples/" = "examples"
 "src/films/" = "films"
 "src/puppet/" = "characters"
 "src/render/" = "export"

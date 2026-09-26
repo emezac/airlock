@@ -14,3 +14,4 @@ out/
 control/config/master.key
 control/config/credentials/*.key
 control/storage/
+/.tmp-live/

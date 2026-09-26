@@ -45,7 +45,7 @@ The push gate is ready. See [control/README.md](control/README.md) to run the se
 cd control && bundle install && bin/rails db:create db:migrate && bin/rails test
 ```
 
-The merge queue, labels, risk scoring and human-attention control are described in [docs/risk.md](docs/risk.md); evidence verification in Token Factory Sandboxes in [docs/evidence.md](docs/evidence.md). The live panel is served at `/` (HTML) and `/dashboard.json`; it is read-only and shows no push contents or secrets.
+The merge queue, labels, risk scoring and human-attention control are described in [docs/risk.md](docs/risk.md); evidence verification in Token Factory Sandboxes in [docs/evidence.md](docs/evidence.md); agent workers and what the first live runs with Nemotron Super taught us in [docs/workers.md](docs/workers.md). The live panel is served at `/` (HTML) and `/dashboard.json`; it is read-only and shows no push contents or secrets.
 
 ## License
 
