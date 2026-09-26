@@ -91,20 +91,26 @@ shared context for every task.
 
 ## Results
 
-Across the runs so far, every backlog task was attempted at least once with
-Nemotron Super (reasoning on, SEARCH/REPLACE blocks):
+Every backlog task has been attempted at least once with Nemotron Super
+(reasoning on, SEARCH/REPLACE blocks). Status at the time of writing:
 
 | Task | What it asked for | Outcome | Attempts |
 |---|---|---|---|
 | FL-1 | A `sway` motion, with a test and docs | Merged automatically | 1 |
-| FL-2 | A new example spec | Held for human review (new golden image) | 1 |
-| FL-4 | Reject duplicate scene names | Merged automatically in one run; gave up in another | 2 / 6 |
-| FL-5 | Per-scene lines in `frameline check` | Merged automatically | 1 |
-| FL-6 | "Make the boards nicer" (vague on purpose) | Held for human review (changed golden images) | 5 |
-| FL-7 | `frameline check --json` | Merged automatically | 1 |
-| FL-8 | A `warm_dusk` style (touches `src/core/`) | Held for human review (risk above threshold) | 1 |
-| FL-9 | Smoke-test every element kind | Merged automatically | 1 |
+| FL-2 | A new example spec | Sent to review (new golden image); rejected: "the boats are too small to read" | 1 |
 | FL-3 | `frameline board --scene N` | Gave up twice; nothing pushed | 6 / 6 |
+| FL-4 | Reject duplicate scene names | Merged in one run; gave up in another | 2 / 6 |
+| FL-5 | Per-scene lines in `frameline check` | Merged automatically | 1 |
+| FL-6 | "Make the boards nicer" (vague on purpose) | Sent to review (changed golden images); approved and merged | 5 |
+| FL-7 | `frameline check --json` | Merged automatically | 1 |
+| FL-8 | A `warm_dusk` style (touches `src/core/`) | Waiting for review (risk above threshold) | 1 |
+| FL-9 | Smoke-test every element kind | Merged automatically | 1 |
+| FL-10 | Use `sway` for the boat in the Lumen opening | Sent to review (changed golden image); approved and merged | 1 |
+
+FL-10 exists because FL-1 added the motion but nothing in the brief's ad used
+it. Its board change is subtle, since a board shows the middle frame of each
+scene. The reviewer compared the animatics, which is why a visual change sent
+to review is rendered on its own.
 
 The same task can pass in one run and fail in the next: FL-4 passed on its
 second attempt in one run (reasoning off) and, in a later run with reasoning
@@ -152,6 +158,33 @@ merged.
 looked frozen while agents kept pushing: the task repeated the same query
 every few seconds, and Rails answered it from the query cache. The rows were
 correct in the database. The loop now reads uncached.
+
+## Feedback on retries
+
+A task can come back to the swarm after it failed. The agent that takes it
+again starts from what went wrong:
+
+- after a failure in the merge queue, the diagnosis (category, explanation,
+  culprit files);
+- after a reviewer's rejection, their reason.
+
+Either one is appended to the task's instructions. Tasks whose diagnosis says
+`human` or `drop` are not offered again. See [risk.md](risk.md#6-after-a-failure-diagnosisrb).
+
+## Relaying model calls in development
+
+While building Airlock, the service ran in a sandbox without the Token Factory
+token, which stayed on a developer's machine. `Airlock::RelayModel` bridges
+that gap, for development only:
+
+- it writes each request to `AIRLOCK_RELAY_OUT` and waits for the response in
+  `AIRLOCK_RELAY_IN`;
+- a small script on the machine that has the token sends the requests and
+  drops the responses back.
+
+If the relay variables are set, the relay is used. Without them, the service
+calls Token Factory directly with `NEBIUS_TOKEN`, which is how it is meant to
+run.
 
 ## Running a worker
 

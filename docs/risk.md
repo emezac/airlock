@@ -1,6 +1,6 @@
 # Risk scoring, human attention and batching
 
-All four pieces live in `control/app/services/airlock/`. Each one is small enough to check by hand.
+Everything here lives in `control/app/services/airlock/`, and each piece is small enough to check by hand.
 
 ## 1. Labels (`labels.rb`, `labeler.rb`)
 
@@ -74,3 +74,40 @@ A failing batch splits in halves; each half runs knowing its parent failed, and 
 | 0.25 | 2 | 0.94 | 6 % |
 
 After bisection, the surviving changes are tested together once more, because two changes can pass alone and fail together.
+
+## 5. Running the queue safely (`merge_queue.rb`)
+
+The math above assumes the queue runs one batch at a time on an up-to-date `main`. Four rules keep that true:
+
+- **One batch per repository.** A Postgres advisory lock guards each repository. The lock and the unlock bypass Rails' query cache: jobs run with the cache on, and a cached "unlock" never ran, which once left a connection holding the lock and the queue stalled.
+- **Check what landed.** After pushing a green batch (through the same gate as everyone else), the queue fetches `main` and checks that it contains every change it merged.
+- **Recover from a dead process.** A batch still marked `running` while the queue holds the lock was left by a process that died. Its changes go back to the queue, or are marked merged if `main` already contains them.
+- **Never wait for the next push.** `MergeQueueSweepJob` wakes the queue for every repository with approved or queued changes when the server boots. In production it should also run as a recurring task.
+
+## 6. After a failure (`diagnosis.rb`)
+
+A change that fails in the queue gets a diagnosis, with the same split as the labels.
+
+The rules decide the category from what the queue recorded:
+
+| Category | How the rules decide it |
+| --- | --- |
+| `merge_conflict` | git could not merge the branch |
+| `interaction` | the change passed in one CI run and failed only when combined with others |
+| `compile_error` | `error[E…]` or `could not compile` in the output |
+| `visual_regression` | the visual test reports changed pixels |
+| `test_failure` | a panic or a failed test result |
+| `infrastructure` | a timeout, or the machine killed the job |
+
+Nemotron 3 Ultra adds three things:
+
+- the culprit files, kept only if the change touched them;
+- a short explanation;
+- the next step: `agent_retry`, `human` or `drop`.
+
+It may name the category only when no rule matched. A person's rejection is recorded the same way, as `rejected_by_reviewer` with their reason.
+
+The swarm's planner reads the result:
+
+- `agent_retry` tasks are offered again, with the diagnosis or the reviewer's reason in the agent's instructions;
+- `human` and `drop` tasks wait for a person.

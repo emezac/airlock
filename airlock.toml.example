@@ -1,22 +1,77 @@
-# Airlock policy. Copy to airlock.toml in the target repository.
+# Airlock policy, annotated. The service reads it from AIRLOCK_POLICY
+# (default: control/config/airlock/airlock.toml). This example is the policy
+# the Frameline demo runs with. Only people edit this file; agents cannot.
 
 [gate]
-require_evidence_trailer = "Airlock-Evidence"
-reject_on_secret = true
-reject_on_deleted_or_skipped_tests = true
+require_evidence_trailer = "Airlock-Evidence"   # the commit trailer that cites a passing command
+protected_refs = ["refs/heads/main"]            # only the merge queue may update these
+merge_identity = "airlock"                      # the merge queue's pusher name
+agent_prefix = "agent-"                         # pushers named agent-* are agents; they may push only to agents/<name>/*
+reject_on_secret = true                         # refuse added lines that look like keys, tokens or private keys
+reject_on_deleted_or_skipped_tests = true       # refuse deleted test files and new skip markers (#[ignore], .skip(...))
 
 [paths]
-# Changes here always go to a human.
-human_review = ["billing/", "sharing/", "auth/", "migrations/", "infra/", "Cargo.toml"]
-# Agents may not touch these paths at all.
-forbidden = ["infra/"]
+# Accepted, but always sent to a person. Golden images are here so that every
+# visual change is seen before it merges.
+human_review = ["billing/", "sharing/", "auth/", "migrations/", "Cargo.toml", "tests/golden/"]
+forbidden = ["infra/"]                          # agents may not touch these at all
+tests = ["tests/", "test/", "spec/"]            # what counts as a test path
+core = ["src/core/"]                            # changes here raise blast radius, and so risk
+
+[labels.area]
+# Path prefix -> area label; the longest prefix wins. The allowed "area" values
+# are these plus "multiple" and "other".
+"src/core/" = "core_renderer"
+"src/spec.rs" = "spec"
+"src/board.rs" = "board"
+"src/bin/" = "cli"
+"examples/" = "examples"
+"tests/" = "tests"
+"docs/" = "docs"
+
+[routing]
+# A change goes to a person when any effective label matches (category:value).
+human_when = [
+  "safety_flag:touches_money", "safety_flag:touches_auth", "safety_flag:touches_data",
+  "safety_flag:weakens_safeguard", "test_signal:tests_weakened", "goal_clarity:vague",
+  "dependency:added_or_changed",
+]
 
 [risk]
-target_utilization = 0.7   # keep human queue utilization rho below this
-failure_rate_alpha = 0.1   # exponential forgetting for per-agent failure rate
+target_utilization = 0.7      # keep the reviewer's utilization rho below this
+failure_rate_alpha = 0.1      # exponential forgetting for each agent's failure rate
+human_reviews_per_hour = 6    # prior for review capacity mu until real review times exist
+min_threshold = 0.35          # never auto-merge above this risk, whatever the load
 
 [merge_queue]
-max_batch = 9              # batch size is chosen online from the observed failure rate
+max_batch = 9                 # the batch size is chosen from the failure rate, up to this
+
+[evidence]
+verify = true                 # re-run each agent's evidence command in a clean sandbox
+# The evidence command must be exactly one of these, optionally with arguments,
+# and may not contain shell operators.
+allowed_commands = ["cargo test", "cargo run --release --bin frameline"]
+
+[sandbox]
+enabled = true                # needs NEBIUS_TOKEN and NEBIUS_PROJECT_ID; otherwise evidence is "skipped"
+image = "ubuntu:latest"       # replace with a prebuilt Rust image (see sandbox/README.md)
+
+[ci]
+command = "cargo test -q"     # what the merge queue runs on each batch
+timeout_seconds = 900
+
+[render]
+# Optional. Draws main after every green batch, and every visual change sent
+# to review, through the same runner as CI. Files left in `output` (.png and
+# .mp4 only) are shown on the Frameline tab and the Floor.
+command = """mkdir -p out/airlock && \
+for s in examples/specs/*.yaml; do \
+  cargo run -q --release --bin frameline -- board "$s" -o "out/airlock/$(basename "$s" .yaml).png" --tile-width 480 || exit 1; \
+done && \
+cargo run -q --release --bin frameline -- animatic examples/specs/lumen_ad.yaml -o out/airlock/lumen_ad.mp4 --width 640"""
+timeout_seconds = 1200
+output = "out/airlock/"
 
 [audit]
-sample_rate = 0.10         # share of auto-merged changes audited after merge
+# Reserved: sampled audits of auto-merged changes are not implemented yet.
+sample_rate = 0.10

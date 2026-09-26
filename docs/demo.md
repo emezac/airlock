@@ -193,6 +193,22 @@ Building it caught two real bugs:
 - **The floor asked for the wrong repository.** It appended `?after=` to a URL
   that already had `?repo=`. URLs are now built with `URL` and `searchParams`.
 
+## Recording the demo
+
+A run that shows every part, in order, from a clean start:
+
+1. `bin/rails airlock:demo:reset FORCE=1`, then `bin/rails airlock:demo:seed` and `bin/rails server`. Open the three tabs.
+2. **Frameline tab.** Read the brief. Every task is "not started", and the boards on `main` are the seed's.
+3. **Floor, live.** Run `bin/rails airlock:swarm AGENTS=agent-ada,agent-kai,agent-lin`. The agents think, type, go to the lab and carry their changes to the gate. Accepted cards go to labels, then to the queue or to the review desk.
+4. **Misbehaving agent.** Run `bin/rails airlock:rogue`. Eight pushes bounce off the gate, each with its reason. The weakened test goes to the review desk. The forged evidence goes through the door and dies in the merge queue (or, with sandboxes, in the lab), and the doctor explains why.
+5. **Review.** On the Frameline tab, sign in and compare the proposed boards and animatics of each visual change. Approve one and reject another with a reason.
+6. **Result.** The approved change merges and `main` is re-rendered. The Frameline tab shows the boards before and after, the new animatic, and every task's status against the brief.
+7. **Floor, explain.** Walk through the nine components while the camera stays on the floor plan.
+
+Steps 3 to 6 take minutes of real time, mostly Rust builds. For the video, replay the session on the Floor (Replay, 20× or 60×), which shows the real events at a watchable speed.
+
+The files in `demo/frameline/` are the seed. The agents' changes live in the demo repository under `AIRLOCK_GIT_ROOT`, not in this repository.
+
 ## Starting over
 
 ```sh

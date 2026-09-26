@@ -65,8 +65,9 @@ timeout_seconds = 900
 
 [render]
 # After every green batch, main is rendered with this command (the policy's,
-# never an agent's) through the same runner as CI, and the files it leaves in
-# `output` are shown on the Frameline tab.
+# never an agent's) through the same runner as CI, and so is every visual
+# change sent to review. The files it leaves in `output` are shown on the
+# Frameline tab and the Floor.
 command = """mkdir -p out/airlock && \
 for s in examples/specs/*.yaml; do \
   cargo run -q --release --bin frameline -- board "$s" -o "out/airlock/$(basename "$s" .yaml).png" --tile-width 480 || exit 1; \
@@ -76,4 +77,5 @@ timeout_seconds = 1200
 output = "out/airlock/"
 
 [audit]
+# Reserved: sampled audits of auto-merged changes are not implemented yet.
 sample_rate = 0.10

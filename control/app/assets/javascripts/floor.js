@@ -344,7 +344,9 @@ function animate(ev) {
         p.carriedBy = null; ag.carrying = null; p.x = SPOTS.gateIn.x; p.y = SPOTS.gateIn.y;
         if (!ok) ag.rogue = true;
       });
-      if (ok) p.moveTo([SPOTS.gateOut]).then(() => { p.station = "gate"; });
+      // State is set when the event arrives, never in a deferred callback:
+      // a later event (routing) must not be overwritten by an earlier animation.
+      if (ok) { p.station = "gate"; p.moveTo([SPOTS.gateOut]); }
       else p.stampWith("✕", T.bad).wait(700).vanish(900);
       if (!ok) ag.say(short(ev.text, 58), T.bad, 4200);
       ag.goDesk();
@@ -764,8 +766,10 @@ const status = (s) => { document.getElementById("floor-status").textContent = s;
 let cursor = 0;
 let liveTimer = null;
 
+// The studio keeps main's latest render: that is current state, not part of a replay.
 function reset() {
-  agents.clear(); parcels.clear(); counters.merged = 0; screen = null;
+  agents.clear(); parcels.clear(); counters.merged = 0;
+  if (screen) screen.rendering = false;
   Object.keys(flashes).forEach((k) => delete flashes[k]);
   document.getElementById("floor-log").replaceChildren();
 }

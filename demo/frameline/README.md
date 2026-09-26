@@ -11,6 +11,11 @@ keeps the name `taller_film`; the Frameline parts are `src/spec.rs`,
 
 ![Storyboard of the Lumen example](docs/board.png)
 
+This directory is the seed of the demo: `bin/rails airlock:demo:seed` pushes it
+into a bare repository behind the gate. Everything the agents change (a
+`sway` motion, `check --json`, duplicate-name validation, new styles and
+examples) lives in that repository's `main`, not here.
+
 ## Usage
 
 ```sh
