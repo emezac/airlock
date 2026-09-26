@@ -25,16 +25,16 @@ module Airlock
 
     # CI runs in a sandbox when one is configured; locally otherwise, because
     # CI commands come from the policy, not from agents.
-    def runner(policy)
-      sandbox_runner(policy) || Runners::Local.new(command: policy.ci_command, timeout: policy.ci_timeout)
+    def runner(policy, timeout: policy.ci_timeout)
+      sandbox_runner(policy, timeout: timeout) || Runners::Local.new(command: policy.ci_command, timeout: timeout)
     end
 
     # Agent-supplied evidence commands only ever run in a sandbox.
-    def sandbox_runner(policy)
+    def sandbox_runner(policy, timeout: policy.ci_timeout)
       return nil unless policy.sandbox_enabled && Sandboxes::Client.configured?
 
       Runners::Sandbox.new(client: Sandboxes::Client.new, image: policy.sandbox_image,
-                           command: policy.ci_command, timeout: policy.ci_timeout)
+                           command: policy.ci_command, timeout: timeout)
     end
   end
 end

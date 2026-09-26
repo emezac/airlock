@@ -1,0 +1,20 @@
+<% content_for :title, "Airlock · Frameline" %>
+<%= render "shared/top", active: :product, subtitle: "What was asked for, and what the swarm delivered." %>
+<main id="page" data-src="<%= product_path(fragment: 1) %>">
+  <%= render "page", p: @p, reviewer: session[:reviewer] %>
+</main>
+<script>
+  // Refresh every 10 seconds. Image URLs name a commit, so the browser keeps them cached.
+  (() => {
+    const page = document.getElementById("page");
+    setInterval(async () => {
+      // Never interrupt a playing animatic or a reviewer typing a reason.
+      if ([...document.querySelectorAll("video")].some((v) => !v.paused)) return;
+      if ([...page.querySelectorAll("input[type=text]")].some((i) => i.value || i === document.activeElement)) return;
+      try {
+        const res = await fetch(page.dataset.src, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+        if (res.ok) page.innerHTML = await res.text();
+      } catch (_) {}
+    }, 10000);
+  })();
+</script>

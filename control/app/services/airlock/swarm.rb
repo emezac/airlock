@@ -31,7 +31,7 @@ module Airlock
       # The last attempt failed in the merge queue and its diagnosis says a
       # person should decide (or drop it): agents do not retry it on their own.
       def held?(repo, task)
-        last = task_changes(repo, task).where(state: %w[failed conflict]).order(:created_at).last
+        last = task_changes(repo, task).where(state: %w[failed conflict rejected]).order(:created_at).last
         %w[human drop].include?(last&.diagnosis&.dig("next_step"))
       end
 
@@ -93,7 +93,7 @@ module Airlock
       # A task retried after failing in the merge queue carries that diagnosis,
       # so the agent starts from the error instead of repeating it.
       def with_history(repo, assignment)
-        last = Change.where(repo: repo, state: %w[failed conflict])
+        last = Change.where(repo: repo, state: %w[failed conflict rejected])
                      .where("ref LIKE ?", "%/#{Change.sanitize_sql_like(assignment.slug)}")
                      .where.not(diagnosis: {}).order(:created_at).last
         return assignment unless last
@@ -101,8 +101,8 @@ module Airlock
         d = last.diagnosis
         note = <<~TXT
 
-          An earlier attempt at this task passed its own check but failed in the merge queue.
-          Diagnosis (#{d['category']}): #{d['summary']}
+          #{d['source'] == 'human' ? 'A reviewer rejected an earlier attempt at this task.' : 'An earlier attempt at this task passed its own check but failed in the merge queue.'}
+          #{d['source'] == 'human' ? 'Their reason' : "Diagnosis (#{d['category']})"}: #{d['summary']}
           #{d['culprit_files'].present? ? "Files involved: #{d['culprit_files'].join(', ')}" : ''}
         TXT
         assignment.with(instructions: assignment.instructions + note)

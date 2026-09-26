@@ -45,4 +45,18 @@ class RouteChangeJobTest < ActiveJob::TestCase
     perform_with(nil)
     assert_equal "skipped", @change.evidence_status
   end
+
+  test "a visual change sent to a person gets its own render; others do not" do
+    @report["files"] << { "path" => "tests/golden/lumen_ad.png", "status" => "M" }
+    @change.update!(report: @report)
+    @change.gate_decision.update!(review: "human", review_reasons: ["sensitive path tests/golden/lumen_ad.png"])
+    perform_with(nil)
+    assert_equal "needs_review", @change.state
+    assert_enqueued_with(job: RenderJob, args: ["frameline", "b" * 40])
+  end
+
+  test "a change routed to the queue is not rendered on its own" do
+    perform_with(nil)
+    assert_no_enqueued_jobs(only: RenderJob)
+  end
 end

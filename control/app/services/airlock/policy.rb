@@ -24,7 +24,8 @@ module Airlock
                 :secret_patterns, :skip_patterns, :reject_on_secret, :reject_on_skipped_tests,
                 :core_paths, :area_labels, :human_when, :target_utilization, :failure_rate_alpha, :reviews_per_hour,
                 :min_threshold, :ambiguity_clarity, :max_batch, :ci_command, :ci_timeout,
-                :verify_evidence, :allowed_evidence_commands, :sandbox_enabled, :sandbox_image
+                :verify_evidence, :allowed_evidence_commands, :sandbox_enabled, :sandbox_image,
+                :render_command, :render_timeout, :render_output
 
     def self.load(path = ENV.fetch("AIRLOCK_POLICY", Rails.root.join("config/airlock/airlock.toml").to_s))
       new(File.exist?(path) ? Tomlrb.load_file(path) : {})
@@ -68,6 +69,10 @@ module Airlock
       @sandbox_enabled = sandbox.fetch("enabled", true)
       @sandbox_image = sandbox.fetch("image", "ubuntu:latest")
       @skip_patterns = DEFAULT_SKIP_PATTERNS
+      render = data.fetch("render", {})
+      @render_command = render["command"]            # nil: main is never rendered
+      @render_timeout = render.fetch("timeout_seconds", 900).to_i
+      @render_output = render.fetch("output", "out/airlock/")
     end
 
     def agent?(pusher) = pusher.to_s.start_with?(agent_prefix)

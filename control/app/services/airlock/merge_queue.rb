@@ -13,15 +13,19 @@ module Airlock
 
     # Batches build on each other's main and share one workspace, so only one
     # may run per repository at a time, whatever the job backend does.
+    #
+    # The lock and the unlock bypass the query cache: jobs run with it on, and a
+    # cached "unlock" is an unlock that never ran, which left a connection
+    # holding the lock and the queue stalled.
     def run_once(repo)
       key = Zlib.crc32("airlock-merge-queue:#{repo}")
       conn = ActiveRecord::Base.connection
-      return :busy unless conn.select_value("SELECT pg_try_advisory_lock(#{key})")
+      return :busy unless conn.uncached { conn.select_value("SELECT pg_try_advisory_lock(#{key})") }
 
       begin
         run_locked(repo)
       ensure
-        conn.select_value("SELECT pg_advisory_unlock(#{key})")
+        conn.uncached { conn.select_value("SELECT pg_advisory_unlock(#{key})") }
       end
     end
 
@@ -146,6 +150,7 @@ module Airlock
                              payload: { size: picked.size, merged: good.size, ci_runs: @runs })
       # After the batch's log is saved: the diagnosis reads it.
       failed.each { |change| DiagnoseFailureJob.perform_later(change.id) }
+      RenderJob.perform_later(batch.repo, merged_sha) if merged_sha
       batch
     end
   end

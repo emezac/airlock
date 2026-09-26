@@ -16,7 +16,7 @@ module Airlock
     end
 
     def to_h
-      changes = Change.where(repo: @repo).includes(:labels).order(created_at: :desc).limit(200).to_a
+      changes = Change.where(repo: @repo).includes(:labels, :gate_decision).order(created_at: :desc).limit(200).to_a
       estimate = Attention.new(@policy, now: @now).estimate(@repo)
       f = failure_rate(changes)
       k = BatchMath.best_size(f, max: @policy.max_batch)
@@ -64,6 +64,7 @@ module Airlock
         risk: change.risk_score&.round(2), evidence: change.evidence_status,
         reasons: change.review_reasons.first(3),
         labels: change.effective_labels.transform_values { |l| { value: l.value, source: l.source } },
+        visual: Array(change.gate_decision&.changed_paths).grep(RepoFiles::GOLDEN).any?,
         diagnosis: change.diagnosis.presence&.slice("category", "category_source", "summary", "next_step", "culprit_files", "source"),
         age_seconds: (@now - change.created_at).round
       }

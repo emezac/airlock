@@ -1,0 +1,14 @@
+<% content_for :title, "Airlock · Reviewer sign-in" %>
+<%= render "shared/top", active: :product, subtitle: "Reviewers approve or reject the changes the gate escalated." %>
+<main id="page">
+  <section class="panel-box signin">
+    <h2>Sign in to review</h2>
+    <% if flash[:alert] %><p class="reason"><%= flash[:alert] %></p><% end %>
+    <%= form_with url: reviewer_session_path, class: "stack" do |f| %>
+      <label>Your name <%= f.text_field :name, required: true, maxlength: 40, autocomplete: "name" %></label>
+      <label>Review token <%= f.password_field :token, required: true, autocomplete: "current-password" %></label>
+      <%= f.submit "Sign in", class: "button primary" %>
+    <% end %>
+    <p class="note">The token is the service's <code>AIRLOCK_REVIEW_TOKEN</code>, the same one the reviews API uses.</p>
+  </section>
+</main>

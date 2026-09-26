@@ -1,5 +1,13 @@
 Rails.application.routes.draw do
   get "dashboard", to: "dashboard#show"
+  get "frameline", to: "product#show", as: :product
+  resource :reviewer_session, only: %i[new create destroy], path: "frameline/reviewer"
+  post "frameline/reviews/:review_id/:decision", to: "decisions#create", as: :decide_review,
+                                                 constraints: { decision: /approve|reject/ }
+  get "frameline/golden/:rev/:name", to: "product#golden", as: :product_golden,
+                                     constraints: { rev: /[0-9a-f]{40}/, name: /[A-Za-z0-9_-][A-Za-z0-9_.-]*/ }, format: false
+  get "frameline/renders/:sha/:name", to: "product#rendered", as: :product_render,
+                                      constraints: { sha: /[0-9a-f]{40}/, name: /[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(png|mp4)/ }, format: false
   root "dashboard#show"
 
   resources :reviews, only: :index do

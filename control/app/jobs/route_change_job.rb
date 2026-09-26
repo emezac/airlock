@@ -11,6 +11,10 @@ class RouteChangeJob < ApplicationJob
 
     change = Airlock::Intake.new(policy).route!(change, push)
     MergeQueueJob.perform_later(change.repo) if change.state == "queued"
+    # A visual change waiting for a person gets its own render to compare.
+    if change.state == "needs_review" && push.files.any? { |f| f.path.match?(Airlock::RepoFiles::GOLDEN) }
+      RenderJob.perform_later(change.repo, change.head_sha)
+    end
   end
 
   private

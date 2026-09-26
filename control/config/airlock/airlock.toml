@@ -63,5 +63,17 @@ image = "ubuntu:latest"       # replace with the prebuilt Rust image for Frameli
 command = "cargo test -q"
 timeout_seconds = 900
 
+[render]
+# After every green batch, main is rendered with this command (the policy's,
+# never an agent's) through the same runner as CI, and the files it leaves in
+# `output` are shown on the Frameline tab.
+command = """mkdir -p out/airlock && \
+for s in examples/specs/*.yaml; do \
+  cargo run -q --release --bin frameline -- board "$s" -o "out/airlock/$(basename "$s" .yaml).png" --tile-width 480 || exit 1; \
+done && \
+cargo run -q --release --bin frameline -- animatic examples/specs/lumen_ad.yaml -o out/airlock/lumen_ad.mp4 --width 640"""
+timeout_seconds = 1200
+output = "out/airlock/"
+
 [audit]
 sample_rate = 0.10

@@ -24,3 +24,13 @@ class Airlock::Labeler
     define_method(:model_labels, original)
   end
 end
+
+class Airlock::Policy
+  def self.stub_load(policy)
+    original = method(:load)
+    define_singleton_method(:load) { |*| policy }
+    yield
+  ensure
+    define_singleton_method(:load, original)
+  end
+end

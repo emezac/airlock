@@ -30,10 +30,13 @@ module Airlock
 
     def main_sha = run!("git", "rev-parse", "refs/remotes/origin/main").strip
 
+    # Everything untracked goes, except this workspace's own build cache:
+    # reusing it across commits in one tree is safe, sharing it between trees
+    # is not (see docs/workers.md).
     def reset_to(sha)
       run!("git", "checkout", "-q", "--detach", sha)
       run!("git", "reset", "-q", "--hard", sha)
-      run!("git", "clean", "-qfdx")
+      run!("git", "clean", "-qfdx", "-e", "/target/")
     end
 
     # Returns false (and leaves the tree clean) when the branch conflicts.
@@ -66,7 +69,7 @@ module Airlock
     def start_branch(name)
       run!("git", "checkout", "-q", "-B", name, "refs/remotes/origin/main")
       run!("git", "reset", "-q", "--hard", "refs/remotes/origin/main")
-      run!("git", "clean", "-qfdx", "-e", "target/")
+      run!("git", "clean", "-qfdx", "-e", "/target/")
     end
 
     def changed? = !run!("git", "status", "--porcelain").strip.empty?

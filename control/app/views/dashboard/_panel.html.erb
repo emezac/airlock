@@ -50,6 +50,7 @@
             <% end %>
           </div>
           <% c[:reasons].each do |r| %><div class="reason"><%= r %></div><% end %>
+          <% if c[:visual] && c[:state] == "needs_review" %><a class="see-boards" href="<%= product_path(anchor: "review-#{c[:id]}") %>">See the boards →</a><% end %>
           <% if (d = c[:diagnosis]) %>
             <div class="diagnosis">
               <span class="chip <%= d["category_source"] %>"><b>why</b><%= d["category"] %></span>

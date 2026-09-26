@@ -9,6 +9,8 @@ module Airlock
   # closed vocabulary, and without a model the rules alone still answer.
   class Diagnosis
     CATEGORIES = %w[merge_conflict interaction compile_error visual_regression test_failure infrastructure unknown].freeze
+    # Not produced here: set by Review when a person rejects with a reason.
+    HUMAN_CATEGORY = "rejected_by_reviewer"
     NEXT_STEPS = %w[agent_retry human drop].freeze
     DEFAULT_NEXT = {
       "merge_conflict" => "agent_retry", "interaction" => "human", "compile_error" => "agent_retry",

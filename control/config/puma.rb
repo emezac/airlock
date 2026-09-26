@@ -40,3 +40,9 @@ plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]
+
+# When the server is up, pick up merge work a previous process left behind
+# (for example, changes approved just before a restart).
+after_booted do
+  Rails.application.executor.wrap { MergeQueueSweepJob.perform_later }
+end

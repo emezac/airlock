@@ -1,0 +1,151 @@
+<% b = p[:brief]; tasks = p[:tasks]; by_status = tasks.group_by { |t| t[:status] }; reviewer = local_assigns[:reviewer] %>
+<% if flash[:notice] || flash[:alert] %><p class="flash <%= flash[:alert] ? 'bad' : '' %>" role="status"><%= flash[:notice] || flash[:alert] %></p><% end %>
+<section class="brief panel-box">
+  <p class="eyebrow">The brief · <%= b["from"] %></p>
+  <h1><%= b["title"] %></h1>
+  <p class="lead"><%= b["summary"] %></p>
+  <ol class="asks">
+    <% Array(b["asks"]).each do |ask| %>
+      <li>
+        <span class="ask-id"><%= ask["id"] %></span>
+        <span class="ask-text"><%= ask["text"] %></span>
+        <span class="ask-tasks">
+          <% tasks.select { |t| t[:asks].include?(ask["id"]) }.each do |t| %>
+            <a href="#task-<%= t[:id] %>" class="status-chip s-<%= t[:status].parameterize %>" title="<%= t[:title] %>: <%= t[:status] %>"><%= t[:id] %></a>
+          <% end %>
+        </span>
+      </li>
+    <% end %>
+  </ol>
+</section>
+
+<section class="kpis product-kpis">
+  <div class="kpi"><div class="label">Tasks merged</div><div class="value"><%= by_status.fetch("merged", []).size %><small>/<%= tasks.size %></small></div></div>
+  <div class="kpi"><div class="label">Waiting for a person</div><div class="value"><%= by_status.fetch("review", []).size %></div></div>
+  <div class="kpi"><div class="label">In flight</div><div class="value"><%= (by_status.fetch("working", []) + by_status.fetch("queued", [])).size %></div></div>
+  <div class="kpi"><div class="label">Stopped</div><div class="value"><%= %w[failed rejected gave\ up error].sum { |s| by_status.fetch(s, []).size } %></div></div>
+  <div class="kpi"><div class="label">Commits on main since the seed</div><div class="value"><%= p[:history].size %></div></div>
+</section>
+
+<section class="panel-box">
+  <h2>The storyboards: before the swarm and on <code>main</code> now</h2>
+  <% if p[:boards].empty? %><p class="empty">No repository yet. Run <code>bin/rails airlock:demo:seed</code>.</p><% end %>
+  <% p[:boards].each do |bd| %>
+    <div class="compare">
+      <h3><%= bd[:name] %> <% if bd[:added] %><span class="tag new">new</span><% elsif bd[:changed] %><span class="tag changed">changed</span><% else %><span class="tag">unchanged since the seed</span><% end %></h3>
+      <% if bd[:changed] %>
+        <div class="pair">
+          <figure>
+            <% if bd[:before] %><%= image_tag product_golden_path(rev: bd[:before], name: bd[:name]), alt: "#{bd[:name]} before", loading: "lazy" %><% else %><div class="missing">did not exist</div><% end %>
+            <figcaption>Seed <code><%= p[:root].to_s[0, 7] %></code></figcaption>
+          </figure>
+          <figure>
+            <% if bd[:after] %><%= image_tag product_golden_path(rev: bd[:after], name: bd[:name]), alt: "#{bd[:name]} on main", loading: "lazy" %><% else %><div class="missing">removed</div><% end %>
+            <figcaption>main <code><%= p[:main].to_s[0, 7] %></code></figcaption>
+          </figure>
+        </div>
+      <% else %>
+        <figure class="single"><%= image_tag product_golden_path(rev: bd[:after], name: bd[:name]), alt: bd[:name], loading: "lazy" %>
+          <figcaption>main <code><%= p[:main].to_s[0, 7] %></code>, same as the seed</figcaption></figure>
+      <% end %>
+    </div>
+  <% end %>
+  <% visual = p[:reviews].count { |rv| rv[:boards].any? } %><% if visual.positive? %><p class="note"><%= pluralize(visual, "visual change") %> waiting for review below would change these boards.</p><% end %>
+  <p class="note">These are the golden images the visual tests compare against, read from git at each commit.</p>
+</section>
+
+<% if (r = p[:render]) %>
+<section class="panel-box">
+  <h2>Latest render of <code>main</code> <small class="note"><%= r["sha"][0, 7] %> · <%= Time.iso8601(r["at"]).strftime("%b %-d %H:%M") %></small></h2>
+  <div class="renders">
+    <% r["files"].select { |f| f.end_with?(".mp4") }.each do |f| %>
+      <figure class="video"><video controls preload="metadata" src="<%= product_render_path(sha: r["sha"], name: f) %>"></video><figcaption><%= f %> · animatic</figcaption></figure>
+    <% end %>
+    <% r["files"].select { |f| f.end_with?(".png") }.each do |f| %>
+      <figure><a href="<%= product_render_path(sha: r["sha"], name: f) %>"><%= image_tag product_render_path(sha: r["sha"], name: f), alt: f, loading: "lazy" %></a><figcaption><%= f %></figcaption></figure>
+    <% end %>
+  </div>
+</section>
+<% end %>
+
+<section class="panel-box">
+  <h2>Waiting for your eyes <span class="count"><%= p[:reviews].size %></span>
+    <small class="note"><% if reviewer %>Signed in as <%= reviewer %> · <%= button_to "sign out", reviewer_session_path, method: :delete, class: "linkish", form_class: "inline" %><% else %><%= link_to "Sign in to approve or reject", new_reviewer_session_path %><% end %></small></h2>
+  <% if p[:reviews].empty? %><p class="empty">Nothing is waiting for review.</p><% end %>
+  <% p[:reviews].each do |rv| %>
+    <article class="review" id="review-<%= rv[:id] %>">
+      <div class="row"><strong><%= rv[:branch] %></strong><% if rv[:risk] %><span class="risk" title="risk score"><%= rv[:risk] %></span><% end %></div>
+      <div class="meta"><%= rv[:agent] %> · <%= rv[:reasons].first(2).join(" · ") %></div>
+      <% if reviewer %>
+        <div class="decide">
+          <%= button_to "Approve", decide_review_path(review_id: rv[:id], decision: "approve"), class: "button primary", form_class: "inline" %>
+          <%= form_with url: decide_review_path(review_id: rv[:id], decision: "reject"), class: "inline reject" do |f| %>
+            <%= f.text_field :reason, placeholder: "Why? (sent back to the agent's record)", maxlength: 500, "aria-label": "Reason for rejecting" %>
+            <%= f.submit "Reject", class: "button" %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if rv[:boards].empty? %><p class="note">No board changes: this one needs a person for the reasons above.</p><% end %>
+      <% if rv[:boards].any? %>
+        <% now_video = p[:render] && p[:render]["files"].find { |f| f.end_with?(".mp4") } %>
+        <% new_video = rv[:render] && rv[:render]["ok"] && rv[:render]["files"].find { |f| f.end_with?(".mp4") } %>
+        <div class="pair">
+          <figure>
+            <% if now_video %><video controls preload="metadata" src="<%= product_render_path(sha: p[:render]["sha"], name: now_video) %>"></video><% else %><div class="missing">main not rendered yet</div><% end %>
+            <figcaption><%= now_video || "animatic" %> · now</figcaption>
+          </figure>
+          <figure>
+            <% if new_video %><video controls preload="metadata" src="<%= product_render_path(sha: rv[:sha], name: new_video) %>"></video>
+            <% elsif rv[:render] %><div class="missing">the render of this branch failed</div>
+            <% else %><div class="missing">rendering this branch…</div><% end %>
+            <figcaption><%= new_video || "animatic" %> · proposed</figcaption>
+          </figure>
+        </div>
+        <p class="note">Boards show the middle frame of each scene; motion changes are clearer in the animatics.</p>
+      <% end %>
+      <% rv[:boards].each do |bd| %>
+        <div class="pair">
+          <figure>
+            <% if bd[:before] %><%= image_tag product_golden_path(rev: bd[:before], name: bd[:name]), alt: "#{bd[:name]} now", loading: "lazy" %><% else %><div class="missing">new board</div><% end %>
+            <figcaption><%= bd[:name] %> · now</figcaption>
+          </figure>
+          <figure>
+            <%= image_tag product_golden_path(rev: bd[:after], name: bd[:name]), alt: "#{bd[:name]} proposed", loading: "lazy" %>
+            <figcaption><%= bd[:name] %> · proposed</figcaption>
+          </figure>
+        </div>
+      <% end %>
+    </article>
+  <% end %>
+</section>
+
+<section class="panel-box">
+  <h2 id="task-list">Tasks derived from the brief</h2>
+  <div class="table-wrap">
+  <table class="tasks">
+    <thead><tr><th>Task</th><th>Serves</th><th>Status</th><th>Agent</th><th>Detail</th></tr></thead>
+    <tbody>
+      <% tasks.each do |t| %>
+        <tr id="task-<%= t[:id] %>">
+          <td><b><%= t[:id] %></b> <%= t[:title] %></td>
+          <td><%= t[:asks].join(", ") %></td>
+          <td><span class="status-chip s-<%= t[:status].parameterize %>"><%= t[:status] %></span></td>
+          <td><%= t[:agent] %><% if t[:attempts].to_i.positive? %><small class="note"> · <%= pluralize(t[:attempts], "attempt") %></small><% end %></td>
+          <td class="detail"><%= t[:detail].to_s.truncate(140) %><% if t[:status] == "review" && p[:reviews].any? { |rv| rv[:id] == t[:change_id] } %> <a href="#review-<%= t[:change_id] %>">see boards</a><% end %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">The backlog was written by hand from the brief (<code>demo/backlog.yml</code>); the agents only work it.</p>
+</section>
+
+<section class="panel-box">
+  <h2>What changed on <code>main</code></h2>
+  <% if p[:history].empty? %><p class="empty">Nothing merged since the seed.</p><% end %>
+  <ol class="history">
+    <% p[:history].each do |c| %>
+      <li><code><%= c[:short] %></code> <%= c[:subject] %> <small class="note"><%= c[:author] %></small></li>
+    <% end %>
+  </ol>
+</section>

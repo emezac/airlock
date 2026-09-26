@@ -99,6 +99,46 @@ back into the swarm:
   instructions include the diagnosis.
 - `human` or `drop`: the task is held; no agent retries it on its own.
 
+## The Frameline tab
+
+The control room shows how changes move. The Frameline tab (`/frameline`)
+shows what they add up to:
+
+- **The brief** (`demo/brief.yml`), with each ask linked to the backlog tasks
+  that serve it and their live status. The backlog is written by hand from the
+  brief; the agents only work it.
+- **The storyboards before the swarm and on `main` now**: the golden images at
+  the seed commit and at `main`, read from git. Showing them runs none of the
+  agents' code.
+- **The latest render of `main`**: after every green batch, `RenderJob` runs
+  the policy's `[render]` command (never an agent's) through the same runner
+  as CI, so in production it runs in a Token Factory Sandbox. It produces the
+  boards at full size and the animatic.
+- **Waiting for your eyes**: every change that needs a person. Visual changes
+  show the current and proposed boards side by side and, once the branch is
+  rendered, both animatics. Boards show the middle frame of each scene, so a
+  motion change (FL-10 swaps `bob` for `sway`) is judged on the video.
+- **Approve or reject** after signing in with the reviewer token (the same
+  token as the reviews API, kept in the signed session). A rejection reason is
+  stored as the change's "why", and the next agent that takes the task gets
+  it in its instructions.
+- **What changed on `main`**, commit by commit.
+
+Image and video URLs name a full commit id, so browsers cache them for good,
+and nothing outside `tests/golden/*.png` or the render folder can be fetched.
+
+Two bugs showed up while running this end to end:
+
+- **A cached unlock.** The merge queue takes a Postgres advisory lock per
+  repository. Jobs run with Rails' query cache on, and after a batch that
+  wrote to the database, the next `SELECT pg_advisory_unlock(...)` in the same
+  job was answered from the cache and never ran. The connection kept the lock
+  and the queue stalled. Lock and unlock now bypass the cache, and a test
+  reproduces the exact sequence.
+- **Nobody woke the queue after a restart.** An approval made just before a
+  restart waited for the next push. `MergeQueueSweepJob` now runs when Puma has
+  booted (and belongs in the recurring tasks in production).
+
 ## Starting over
 
 ```sh

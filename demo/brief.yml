@@ -1,0 +1,24 @@
+# The request the swarm works from, as a creative team would write it.
+# Lumen is a made-up brand for the demo. Each backlog task lists the asks it serves.
+title: Lumen desk lamp, 30-second spot
+from: Creative team, Lumen (fictional brand)
+summary: >
+  We are pitching a 30-second spot for Lumen, a desk lamp that follows your
+  focus. The storyboard and the animatic come out of Frameline. Before the
+  client review we need a few changes to the spot and to the tool itself.
+asks:
+  - id: A1
+    text: The paper boat in the opening shot should rock gently, not float still.
+  - id: A2
+    text: A square cut for social media, a small morning story around a coffee cup.
+  - id: A3
+    text: The storyboards should look more finished before the client sees them.
+  - id: A4
+    text: A warmer dusk look we can use for the closing scenes.
+  - id: A5
+    text: Producers want to look at one scene at a time.
+  - id: A6
+    text: >
+      Fewer surprises in the pipeline: catch mistakes in the scene scripts,
+      print what each scene contains, give our tools JSON, and make sure every
+      character still renders.

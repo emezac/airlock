@@ -1,8 +1,6 @@
 <% content_for :title, "Airlock · #{@snapshot[:repo]}" %>
-<header class="top">
-  <div class="brand"><span class="mark"></span>Airlock</div>
-  <div class="sub">Nothing reaches <code>main</code> without reproducible evidence. Only risky changes reach a human.</div>
-</header>
+<%= render "shared/top", active: :control,
+           subtitle: safe_join(["Nothing reaches ", tag.code("main"), " without reproducible evidence. Only risky changes reach a human."]) %>
 <main id="panel" data-src="<%= dashboard_path(repo: @snapshot[:repo], fragment: 1) %>">
   <%= render "panel", s: @snapshot %>
 </main>

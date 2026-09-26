@@ -92,4 +92,21 @@ class Airlock::MergeQueueTest < ActiveSupport::TestCase
     assert_equal [stuck.id], batch.batch_changes.pluck(:id)
     assert_includes main_files, "stuck.txt"
   end
+
+  test "the repository lock is really released, even with the query cache on" do
+    key = Zlib.crc32("airlock-merge-queue:frameline")
+    branch("one", "one.txt")
+    # What MergeQueueJob does: a batch that writes (which clears the cache),
+    # then a pass that finds nothing, all inside one job's query cache.
+    ActiveRecord::Base.cache do
+      assert_kind_of MergeBatch, @queue.run_once("frameline")
+      assert_nil @queue.run_once("frameline")
+    end
+    other = PG.connect(ActiveRecord::Base.connection_db_config.configuration_hash.slice(:host, :user, :password, :port)
+                         .merge(dbname: ActiveRecord::Base.connection_db_config.database).compact)
+    assert_equal "t", other.exec("SELECT pg_try_advisory_lock(#{key})").getvalue(0, 0), "another session must be able to take the lock"
+    other.exec("SELECT pg_advisory_unlock(#{key})")
+  ensure
+    other&.close
+  end
 end
