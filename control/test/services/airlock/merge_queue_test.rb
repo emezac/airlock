@@ -73,4 +73,21 @@ class Airlock::MergeQueueTest < ActiveSupport::TestCase
     @queue.run_once("frameline")
     assert_equal %w[conflict merged], [one.reload.state, two.reload.state].sort
   end
+
+  test "a batch left running by a dead process is abandoned and its changes requeued" do
+    stuck = branch("stuck", "stuck.txt")
+    landed = branch("landed", "landed.txt")
+    # landed reached main before the process died; stuck did not.
+    sh "git --git-dir=#{@bare} update-ref refs/heads/main refs/heads/agents/agent-1/landed"
+    orphan = MergeBatch.create!(repo: "frameline", state: "running", size: 2)
+    Change.where(id: [stuck.id, landed.id]).update_all(state: "merging", merge_batch_id: orphan.id)
+
+    batch = @queue.run_once("frameline")
+
+    assert_equal "abandoned", orphan.reload.state
+    assert_equal "merged", landed.reload.state
+    assert_equal "merged", stuck.reload.state, "requeued and merged by the next batch"
+    assert_equal [stuck.id], batch.batch_changes.pluck(:id)
+    assert_includes main_files, "stuck.txt"
+  end
 end

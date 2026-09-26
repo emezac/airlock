@@ -28,6 +28,7 @@ module Airlock
     private
 
     def run_locked(repo)
+      recover_orphans!(repo)
       candidates = Change.mergeable.where(repo: repo).to_a
       return nil if candidates.empty?
 
@@ -48,6 +49,30 @@ module Airlock
       good = bisect(base, picked)
       good = confirm(base, good)
       finish!(batch, base, picked, good)
+    end
+
+    # We hold the repository lock, so a batch still marked running was left by
+    # a process that died mid-batch (a deploy, a crash). Its changes go back
+    # to the queue, unless main already contains them, in which case the push
+    # happened and only the bookkeeping was lost.
+    def recover_orphans!(repo)
+      orphans = MergeBatch.where(repo: repo, state: "running").to_a
+      return if orphans.empty?
+
+      @workspace.prepare!
+      main = @workspace.main_sha
+      orphans.each do |batch|
+        batch.batch_changes.where(state: "merging").find_each do |change|
+          if @workspace.contains?(main, change.ref)
+            change.update!(state: "merged")
+          else
+            change.update!(state: "queued", merge_batch_id: nil)
+          end
+        end
+        batch.update!(state: "abandoned", log: batch.log + [{ event: "abandoned", reason: "process ended mid-batch" }])
+        Agentkit::Audit.record(event_type: "merge_queue.recovered", status: "abandoned", subject: batch,
+                               payload: { repo: repo, main: main })
+      end
     end
 
     def failure_estimate(changes)

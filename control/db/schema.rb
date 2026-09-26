@@ -10,11 +10,34 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_221316) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
   enable_extension "pgcrypto"
+
+  create_table "agent_runs", force: :cascade do |t|
+    t.string "repo", null: false
+    t.string "agent", null: false
+    t.string "task", null: false
+    t.string "title"
+    t.string "status", default: "waiting", null: false
+    t.integer "attempts", default: 0, null: false
+    t.integer "input_tokens", default: 0, null: false
+    t.integer "output_tokens", default: 0, null: false
+    t.string "branch"
+    t.string "sha"
+    t.string "last_note"
+    t.text "gate_output"
+    t.jsonb "log", default: [], null: false
+    t.string "swarm_id"
+    t.datetime "started_at"
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repo", "created_at"], name: "index_agent_runs_on_repo_and_created_at"
+    t.index ["swarm_id"], name: "index_agent_runs_on_swarm_id"
+  end
 
   create_table "agent_stats", force: :cascade do |t|
     t.string "agent"
@@ -401,7 +424,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_221316) do
     t.index ["dossier_id"], name: "index_agentkit_exploration_reviews_on_dossier_id", unique: true
     t.index ["tenant_key", "account_id", "status", "submitted_at"], name: "idx_agentkit_exploration_review_queue"
     t.index ["tenant_key", "account_id", "target", "evidence_digest"], name: "idx_agentkit_exploration_review_evidence", unique: true
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'rolled_back'::character varying]::text[])", name: "chk_agentkit_exploration_review_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'approved'::character varying::text, 'rejected'::character varying::text, 'rolled_back'::character varying::text])", name: "chk_agentkit_exploration_review_status"
   end
 
   create_table "agentkit_exploration_worlds", force: :cascade do |t|
@@ -483,7 +506,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_221316) do
     t.index ["account_id"], name: "index_agentkit_findings_on_account_id"
     t.index ["detector", "subject"], name: "index_agentkit_findings_on_detector_and_subject"
     t.index ["status", "severity"], name: "index_agentkit_findings_on_status_and_severity"
-    t.index ["tenant_key", "fingerprint"], name: "idx_agentkit_tenant_active_fingerprint", unique: true, where: "((status)::text = ANY ((ARRAY['open'::character varying, 'accepted'::character varying, 'experimenting'::character varying])::text[]))"
+    t.index ["tenant_key", "fingerprint"], name: "idx_agentkit_tenant_active_fingerprint", unique: true, where: "((status)::text = ANY (ARRAY[('open'::character varying)::text, ('accepted'::character varying)::text, ('experimenting'::character varying)::text]))"
     t.index ["tenant_key"], name: "index_agentkit_findings_on_tenant_key"
   end
 
@@ -634,7 +657,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_221316) do
     t.index ["search_vector"], name: "index_agentkit_memories_on_search_vector", using: :gin
     t.index ["superseded_by_id"], name: "index_agentkit_memories_on_superseded_by_id"
     t.index ["tags"], name: "index_agentkit_memories_on_tags", using: :gin
-    t.index ["tenant_key", "expires_at"], name: "idx_agentkit_memories_expiration", where: "((expires_at IS NOT NULL) AND ((status)::text = ANY ((ARRAY['raw'::character varying, 'embedded'::character varying, 'consolidated'::character varying])::text[])))"
+    t.index ["tenant_key", "expires_at"], name: "idx_agentkit_memories_expiration", where: "((expires_at IS NOT NULL) AND ((status)::text = ANY (ARRAY[('raw'::character varying)::text, ('embedded'::character varying)::text, ('consolidated'::character varying)::text])))"
     t.index ["tenant_key", "pinned_at"], name: "idx_agentkit_memories_pinned", where: "(pinned_at IS NOT NULL)"
     t.index ["tenant_key", "retention_policy"], name: "index_agentkit_memories_on_tenant_key_and_retention_policy"
     t.index ["tenant_key", "status"], name: "index_agentkit_memories_on_tenant_key_and_status"

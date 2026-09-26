@@ -17,7 +17,7 @@ module Airlock
 
       def initialize(token: ENV.fetch("NEBIUS_TOKEN"), project: ENV.fetch("NEBIUS_PROJECT_ID"),
                      base: ENV.fetch("NEBIUS_SANDBOXES_BASE", "https://api.tokenfactory.nebius.com/sandboxes/v1/"),
-                     sleeper: ->(s) { sleep(s) })
+                     sleeper: ->(s) { ActiveSupport::Dependencies.interlock.permit_concurrent_loads { sleep(s) } })
         @token = token
         @project = project
         @base = base.end_with?("/") ? base : "#{base}/"

@@ -66,3 +66,37 @@ tasks:
       The storyboards could look better. Improve them.
     context: [src/board.rs]
     check: cargo test --release
+
+  - id: FL-7
+    title: Machine-readable check output
+    instructions: |
+      Add a `--json` flag to `frameline check`. With it, print one JSON object
+      instead of the text summary: title, format, style, total duration in
+      seconds and a "scenes" array with name, duration, shot and element kinds.
+      Validation errors keep failing with a non-zero exit, as today. serde_json
+      is already a dependency. Add a test that runs the parsing and checks the
+      JSON shape (you may add a small public function that builds the value).
+    context: [src/bin/frameline.rs, src/spec.rs, Cargo.toml]
+    check: cargo test --release
+
+  - id: FL-8
+    title: Add a warm_dusk style
+    instructions: |
+      Add a style called "warm_dusk": warm orange paper, deep plum ink and a
+      soft pink accent, with the same finish as paper_ink. Add a
+      `Palette::warm_dusk()` constructor next to the others, accept the name in
+      the spec, add a validation test and list it in README.md. Do not change
+      any existing palette.
+    context: [src/core/color.rs, src/spec.rs, tests/spec.rs, README.md]
+    check: cargo test --release
+
+  - id: FL-9
+    title: Smoke-test every element kind
+    instructions: |
+      Add a test in tests/visual.rs that builds a spec with one scene per
+      element kind (boat, fly, balloon, tortoise, product, text) and renders its
+      board at a small tile width without panicking, checking that each tile
+      is not blank (some pixel differs from the paper colour). Do not change
+      the golden images or the existing tests.
+    context: [tests/visual.rs, src/spec.rs, src/board.rs]
+    check: cargo test --release

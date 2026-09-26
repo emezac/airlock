@@ -23,6 +23,7 @@ module Airlock
       {
         repo: @repo,
         generated_at: @now.iso8601,
+        swarm: swarm,
         attention: estimate.to_h.merge(target_rho: @policy.target_utilization),
         batching: { failure_rate: f.round(3), batch_size: k,
                     ci_runs_per_change: (BatchMath.expected_runs(k, f) / k).round(3) },
@@ -35,6 +36,22 @@ module Airlock
     end
 
     private
+
+    # The latest swarm: one row per agent, showing the task it is on now (or
+    # its last one) and how far through its share it is.
+    def swarm
+      recent = AgentRun.where(repo: @repo).where.not(swarm_id: nil).order(created_at: :desc).limit(100).to_a
+      id = recent.first&.swarm_id
+      runs = recent.select { |r| r.swarm_id == id }
+      agents = runs.group_by(&:agent).sort.map do |agent, rs|
+        now = rs.find { |r| r.status == "working" } || rs.select(&:finished?).max_by(&:finished_at) || rs.min_by(&:id)
+        { agent: agent, task: now.task, title: now.title, status: now.status, attempts: now.attempts,
+          note: now.last_note, done: rs.count(&:finished?), total: rs.size,
+          tokens: rs.sum { |r| r.input_tokens + r.output_tokens } }
+      end
+      { id: id, agents: agents, outcomes: runs.select(&:finished?).map(&:status).tally,
+        tokens: runs.sum { |r| r.input_tokens + r.output_tokens } }
+    end
 
     def failure_rate(changes)
       rates = changes.map(&:pusher).uniq.map { |agent| AgentStat.rate_for(agent) }

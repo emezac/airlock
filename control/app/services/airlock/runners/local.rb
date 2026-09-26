@@ -19,7 +19,9 @@ module Airlock
 
       # collect: ignored here, the command already writes into dir.
       def call(dir, command: @command, collect: [])
-        out, status = Open3.capture2e(ISOLATED_ENV, "timeout", @timeout.to_s, "sh", "-c", command, chdir: dir)
+        out, status = ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+          Open3.capture2e(ISOLATED_ENV, "timeout", @timeout.to_s, "sh", "-c", command, chdir: dir)
+        end
         Result.new(ok: status.success?, output: out.lines.last(400).join, checkpoint: nil, run_id: nil)
       end
     end

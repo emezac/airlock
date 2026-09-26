@@ -12,6 +12,24 @@
   <div class="kpi"><div class="label">Batch size k</div><div class="value"><%= b[:batch_size] %><small> · <%= b[:ci_runs_per_change] %> CI runs per change</small></div></div>
 </section>
 
+<% sw = s[:swarm] %>
+<% if sw[:agents].any? %>
+<section class="swarm">
+  <h2>Swarm <span class="count"><%= sw[:agents].size %> agents</span>
+    <small class="note"><%= sw[:outcomes].map { |k, v| "#{v} #{k.tr('_', ' ')}" }.join(" · ").presence || "starting" %> · <%= number_with_delimiter(sw[:tokens]) %> tokens</small></h2>
+  <div class="agents">
+    <% sw[:agents].each do |ag| %>
+      <article class="agent <%= ag[:status] %>">
+        <div class="row"><strong><%= ag[:agent] %></strong><span class="status"><%= ag[:status].tr("_", " ") %></span></div>
+        <div class="task"><b><%= ag[:task] %></b> <%= ag[:title] %></div>
+        <div class="meta">task <%= [ag[:done] + (ag[:status] == "working" ? 1 : 0), ag[:total]].min %>/<%= ag[:total] %> · attempt <%= ag[:attempts] %></div>
+        <% if ag[:note] %><div class="note-line" title="<%= ag[:note] %>"><%= ag[:note] %></div><% end %>
+      </article>
+    <% end %>
+  </div>
+</section>
+<% end %>
+
 <p class="legend">Labels: <span class="chip">rule</span><span class="chip model">model</span><span class="chip override">human override</span></p>
 <section class="board">
   <% { "review" => "Needs a human", "queue" => "Merge queue", "merged" => "Merged", "stopped" => "Stopped" }.each do |key, title| %>

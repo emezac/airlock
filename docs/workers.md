@@ -89,23 +89,69 @@ that the binary imports the library as `taller_film::`; it tried `crate::`,
 then `super::`, then `super::super::`. The backlog now lists `src/lib.rs` as
 shared context for every task.
 
-## Results of the run
+## Results
+
+Across the runs so far, every backlog task was attempted at least once with
+Nemotron Super (reasoning on, SEARCH/REPLACE blocks):
 
 | Task | What it asked for | Outcome | Attempts |
 |---|---|---|---|
 | FL-1 | A `sway` motion, with a test and docs | Merged automatically | 1 |
-| FL-2 | A new example spec | Accepted; held for human review (new golden image) | 1 |
+| FL-2 | A new example spec | Held for human review (new golden image) | 1 |
+| FL-4 | Reject duplicate scene names | Merged automatically in one run; gave up in another | 2 / 6 |
 | FL-5 | Per-scene lines in `frameline check` | Merged automatically | 1 |
-| FL-6 | "Make the boards nicer" (vague on purpose) | Accepted; held for human review (changed golden images) | 5 |
-| FL-3 | `frameline board --scene N` | Gave up; nothing pushed | 6 |
-| FL-4 | Reject duplicate scene names | Gave up; nothing pushed | 6 |
+| FL-6 | "Make the boards nicer" (vague on purpose) | Held for human review (changed golden images) | 5 |
+| FL-7 | `frameline check --json` | Merged automatically | 1 |
+| FL-8 | A `warm_dusk` style (touches `src/core/`) | Held for human review (risk above threshold) | 1 |
+| FL-9 | Smoke-test every element kind | Merged automatically | 1 |
+| FL-3 | `frameline board --scene N` | Gave up twice; nothing pushed | 6 / 6 |
 
-FL-4 is a limitation of the model on this task: `HashMap::new()` without a
-type, and rustc points at the line that uses the value rather than the
-declaration. FL-3 ran before the shared context existed. In both cases the
-worker stopped at its budget and pushed nothing, which is the behaviour we
-want: a task that cannot pass does not become a branch that someone has to
-clean up.
+The same task can pass in one run and fail in the next: FL-4 passed on its
+second attempt in one run (reasoning off) and, in a later run with reasoning
+on, spent five attempts on a type inference error at the wrong line. FL-3 fails on the boundary between the
+binary and the library (`crate::` against `taller_film::`), even with
+`src/lib.rs` in its context; the second failure cost about 140 000 tokens.
+When a worker stops at its budget it pushes nothing, so a task that cannot
+pass never becomes a branch someone has to clean up.
+
+The labels also caught something the agent did not say: FL-7 asked for a test,
+and its card shows `tests: no_tests`. The change was small and low risk, so it
+merged, but the gap is visible on the panel.
+
+## The swarm
+
+`SwarmFlow` (agentkit Flow) runs several agents at once:
+
+1. `plan` spreads the pending tasks over the agents, round-robin. A task whose
+   branch is already queued, merging, merged or waiting for review is skipped.
+2. `map :work` gives each agent its share as one branch. With the ActiveJob
+   dispatcher every branch is a job, so the agents work in parallel; inside a
+   branch an agent does its tasks in order, in its own clone.
+3. `join` waits for every branch, whether it succeeded or not.
+4. `report` sums the outcomes and the tokens.
+
+Every task is an `AgentRun` row, updated as the worker goes (waiting for the
+model, running the check, the gate's answer). The panel shows the latest swarm
+above the columns: one card per agent, its current task and its last step.
+
+```sh
+bin/rails airlock:swarm AGENTS=agent-ada,agent-kai,agent-lin
+```
+
+Two more lessons came from running the swarm:
+
+**A process can die in the middle of a batch.** Restarting the service while
+the merge queue was testing left a batch marked `running` and its change
+marked `merging`, so neither the queue nor the planner would touch it again.
+The queue now recovers under its repository lock: any batch still `running`
+there was left by a dead process, so its changes go back to the queue, or are
+marked merged if `main` already contains them. That is how FL-4 finally
+merged.
+
+**Polling needs to bypass the query cache.** The swarm's progress display
+looked frozen while agents kept pushing: the task repeated the same query
+every few seconds, and Rails answered it from the query cache. The rows were
+correct in the database. The loop now reads uncached.
 
 ## Running a worker
 

@@ -34,7 +34,9 @@ module Airlock
       @thinking = thinking
     end
 
-    def run(assignment)
+    # on_note: called with each progress line, for live status.
+    def run(assignment, on_note: nil)
+      @on_note = on_note
       @log = []
       @last_paths = []
       @tokens = [0, 0]
@@ -45,6 +47,7 @@ module Airlock
       touched = []
 
       1.upto(@max_attempts) do |attempt|
+        progress "attempt #{attempt}: waiting for #{@model_name.split('/').last}"
         reply = ask(messages)
         messages << { role: "assistant", content: reply }
         @last_paths = reply.scan(/^(\S+)\n<{5,9} SEARCH/).flatten.uniq
@@ -56,6 +59,7 @@ module Airlock
           note "regenerated golden images: #{regen.ok ? 'ok' : 'failed'}"
         end
         @workspace.commit_all("wip #{assignment.id} attempt #{attempt}")
+        progress "attempt #{attempt}: running #{assignment.check}"
         check = @runner.call(@workspace.path, command: assignment.check)
         unless check.ok
           note "check failed: #{assignment.check}"
@@ -89,7 +93,13 @@ module Airlock
       reply.content
     end
 
-    def note(line) = @log << line
+    def note(line)
+      @log << line
+      @on_note&.call(line)
+    end
+
+    # Live status only; not part of the result's log.
+    def progress(line) = @on_note&.call(line)
 
     def result(status, assignment, branch, sha, attempts, gate)
       Result.new(status: status, agent: @agent, assignment: assignment.id, branch: branch, sha: sha, attempts: attempts,
