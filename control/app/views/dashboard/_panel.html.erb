@@ -50,6 +50,14 @@
             <% end %>
           </div>
           <% c[:reasons].each do |r| %><div class="reason"><%= r %></div><% end %>
+          <% if (d = c[:diagnosis]) %>
+            <div class="diagnosis">
+              <span class="chip <%= d["category_source"] %>"><b>why</b><%= d["category"] %></span>
+              <span class="chip <%= d["source"] %>"><b>next</b><%= d["next_step"].to_s.tr("_", " ") %></span>
+              <p><%= d["summary"] %></p>
+              <% if d["culprit_files"].present? %><p class="note"><%= d["culprit_files"].join(", ") %></p><% end %>
+            </div>
+          <% end %>
         </article>
       <% end %>
     </div>

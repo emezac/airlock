@@ -18,7 +18,7 @@ module Airlock
 
         tasks = Assignment.load_all(backlog)
         tasks = tasks.select { |t| Array(only).include?(t.id) } if only.present?
-        pending = tasks.reject { |t| done?(repo, t) }
+        pending = tasks.reject { |t| done?(repo, t) || held?(repo, t) }
         groups = agents.index_with { [] }
         pending.each_with_index { |t, i| groups[agents[i % agents.size]] << t.id }
         groups.reject { |_, ids| ids.empty? }.map do |agent, ids|
@@ -26,8 +26,17 @@ module Airlock
         end
       end
 
-      def done?(repo, task)
-        Change.where(repo: repo, state: DONE_STATES).where("ref LIKE ?", "%/#{Change.sanitize_sql_like(task.slug)}").exists?
+      def done?(repo, task) = task_changes(repo, task).where(state: DONE_STATES).exists?
+
+      # The last attempt failed in the merge queue and its diagnosis says a
+      # person should decide (or drop it): agents do not retry it on their own.
+      def held?(repo, task)
+        last = task_changes(repo, task).where(state: %w[failed conflict]).order(:created_at).last
+        %w[human drop].include?(last&.diagnosis&.dig("next_step"))
+      end
+
+      def task_changes(repo, task)
+        Change.where(repo: repo).where("ref LIKE ?", "%/#{Change.sanitize_sql_like(task.slug)}")
       end
 
       # One agent's share, task after task. Safe to redeliver: finished tasks of
@@ -56,17 +65,22 @@ module Airlock
 
       def worker_for(repo, agent, task)
         policy = Policy.load
+        Worker.new(agent: agent, workspace: workspace_for(repo, agent), runner: runner(policy), model: model(agent, task),
+                   policy: policy)
+      end
+
+      # An agent's own clone; pushes carry the hook's settings so they reach the gate.
+      def workspace_for(repo, agent)
         remote = ENV.fetch("AIRLOCK_PUSH_URL") { File.join(ENV.fetch("AIRLOCK_GIT_ROOT"), "#{repo}.git") }
         work = ENV.fetch("AIRLOCK_WORK_ROOT", Rails.root.join("tmp/workspaces").to_s)
         env = { "AIRLOCK_URL" => ENV["AIRLOCK_URL"], "AIRLOCK_HOOK_SECRET" => ENV["AIRLOCK_HOOK_SECRET"] }.compact
-        workspace = GitWorkspace.new(remote: remote, path: File.join(work, "#{repo}-#{agent}"),
-                                     author: agent, identity: agent, env: env)
-        Worker.new(agent: agent, workspace: workspace, runner: runner(policy), model: model(agent, task), policy: policy)
+        GitWorkspace.new(remote: remote, path: File.join(work, "#{repo}-#{agent}"), author: agent, identity: agent, env: env)
       end
 
       private
 
       def perform(run, assignment)
+        assignment = with_history(run.repo, assignment)
         run.update!(status: "working", started_at: Time.current)
         result = worker_for(run.repo, run.agent, run.task).run(assignment, on_note: ->(line) { run.note!(line) })
         run.finish!(result)
@@ -74,6 +88,24 @@ module Airlock
       rescue StandardError => e
         run.update!(status: "error", last_note: "#{e.class}: #{e.message}".truncate(240), finished_at: Time.current)
         summary(run)
+      end
+
+      # A task retried after failing in the merge queue carries that diagnosis,
+      # so the agent starts from the error instead of repeating it.
+      def with_history(repo, assignment)
+        last = Change.where(repo: repo, state: %w[failed conflict])
+                     .where("ref LIKE ?", "%/#{Change.sanitize_sql_like(assignment.slug)}")
+                     .where.not(diagnosis: {}).order(:created_at).last
+        return assignment unless last
+
+        d = last.diagnosis
+        note = <<~TXT
+
+          An earlier attempt at this task passed its own check but failed in the merge queue.
+          Diagnosis (#{d['category']}): #{d['summary']}
+          #{d['culprit_files'].present? ? "Files involved: #{d['culprit_files'].join(', ')}" : ''}
+        TXT
+        assignment.with(instructions: assignment.instructions + note)
       end
 
       def summary(run)

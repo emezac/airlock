@@ -1,0 +1,30 @@
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+.... 4/7
+examples_are_valid --- FAILED
+..
+failures:
+
+---- examples_are_valid stdout ----
+
+thread 'examples_are_valid' (5393) panicked at tests/spec.rs:33:46:
+lumen_ad: scene 1 (Hook): caption longer than 8 characters
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: spec::examples_are_valid::{{closure}}
+   3: core::ops::function::FnOnce::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    examples_are_valid
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+error: test failed, to rerun pass `--test spec`
+

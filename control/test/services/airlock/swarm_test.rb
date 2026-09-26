@@ -78,4 +78,29 @@ class Airlock::SwarmTest < ActiveSupport::TestCase
     assert_equal 30, report["tokens"]["input"]
     assert_equal 3, branches.size
   end
+
+  def failed_change(task, next_step, category: "compile_error")
+    decision = GateDecision.create!(repo: "frameline", ref: "refs/heads/agents/agent-x/#{task.downcase}", pusher: "agent-x", verdict: "accept")
+    Change.create!(repo: "frameline", ref: decision.ref, pusher: "agent-x", head_sha: "x", gate_decision: decision, state: "failed",
+                   diagnosis: { "category" => category, "summary" => "render_scene_tile is missing", "next_step" => next_step,
+                                "culprit_files" => ["src/board.rs"] })
+  end
+
+  test "a task whose failure needs a person is held; one the agent can fix is retried with the diagnosis" do
+    failed_change("T-1", "human", category: "visual_regression")
+    failed_change("T-2", "agent_retry")
+    plan = Airlock::Swarm.plan(repo: "frameline", agents: %w[agent-a], backlog: @backlog, swarm_id: "s5")
+    assert_equal %w[T-2 T-3], plan.first["tasks"]
+
+    seen = nil
+    Airlock::Swarm.model_factory = lambda do |_agent, task|
+      model = TaskModel.new(task)
+      model.define_singleton_method(:chat) { |**kw| seen ||= kw[:messages].last[:content]; super(**kw) }
+      model
+    end
+    Airlock::Swarm.work(plan.first.merge("tasks" => %w[T-2]))
+    assert_match "failed in the merge queue", seen
+    assert_match "render_scene_tile is missing", seen
+    assert_match "src/board.rs", seen
+  end
 end

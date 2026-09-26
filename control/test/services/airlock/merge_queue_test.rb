@@ -3,6 +3,7 @@ require "tmpdir"
 
 # Real git repositories; the CI command checks the tree like a test suite would.
 class Airlock::MergeQueueTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
   CI = %(test ! -e BROKEN && ! (test -e a.txt && test -e b.txt && grep -q red a.txt && grep -q red b.txt))
 
   setup do
@@ -52,6 +53,7 @@ class Airlock::MergeQueueTest < ActiveSupport::TestCase
     batch = @queue.run_once("frameline")
     assert_equal "red", batch.state
     assert_equal "failed", bad.reload.state
+    assert_enqueued_with(job: DiagnoseFailureJob, args: [bad.id])
     assert(good.all? { |c| c.reload.state == "merged" })
     refute_includes main_files, "BROKEN"
     # 5 runs of test-and-bisect plus 1 to confirm the surviving union together.

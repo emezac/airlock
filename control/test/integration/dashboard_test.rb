@@ -48,6 +48,18 @@ class DashboardTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "attempt 2: running cargo test --release"
   end
 
+  test "a failed change shows its diagnosis" do
+    Change.last.update!(state: "failed", diagnosis: { "category" => "compile_error", "category_source" => "rule",
+                                                      "summary" => "render_scene_tile was never defined.", "next_step" => "agent_retry",
+                                                      "culprit_files" => ["src/bin/frameline.rs"], "source" => "model" })
+    get "/dashboard"
+    assert_includes response.body, "compile_error"
+    assert_includes response.body, "render_scene_tile was never defined."
+    assert_includes response.body, "agent retry"
+    get "/dashboard.json"
+    assert_equal "compile_error", response.parsed_body.dig("columns", "stopped", 0, "diagnosis", "category")
+  end
+
   test "the fragment is the panel without the page shell" do
     get "/dashboard", params: { fragment: 1 }
     refute_includes response.body, "<html"

@@ -64,6 +64,7 @@ module Airlock
         risk: change.risk_score&.round(2), evidence: change.evidence_status,
         reasons: change.review_reasons.first(3),
         labels: change.effective_labels.transform_values { |l| { value: l.value, source: l.source } },
+        diagnosis: change.diagnosis.presence&.slice("category", "category_source", "summary", "next_step", "culprit_files", "source"),
         age_seconds: (@now - change.created_at).round
       }
     end

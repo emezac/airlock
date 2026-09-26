@@ -139,10 +139,13 @@ module Airlock
         change.update!(state: state, outcome: state)
         AgentStat.observe!(change.pusher, failed: state != "merged", alpha: @policy.failure_rate_alpha)
       end
+      failed = picked.reject { |c| good.include?(c) }
       batch.update!(state: good.size == picked.size ? "green" : "red", ci_runs: @runs, merged_sha: merged_sha,
                     log: @log + [{ event: "finish", merged: good.map(&:id), runs: @runs }])
       Agentkit::Audit.record(event_type: "merge_queue.batch", status: batch.state, subject: batch,
                              payload: { size: picked.size, merged: good.size, ci_runs: @runs })
+      # After the batch's log is saved: the diagnosis reads it.
+      failed.each { |change| DiagnoseFailureJob.perform_later(change.id) }
       batch
     end
   end

@@ -46,4 +46,16 @@ namespace :airlock do
       puts format("%-10s %-6s %-8s %d attempts  %6d tokens", r.agent, r.task, r.status, r.attempts, r.input_tokens + r.output_tokens)
     end
   end
+
+  desc "Push the scripted misbehaving agent's scenarios: bin/rails airlock:rogue [SCENARIO=all|name] [AGENT=agent-rex]"
+  task rogue: :environment do
+    names = ENV.fetch("SCENARIO", "all") == "all" ? Airlock::Rogue.names : ENV["SCENARIO"].split(",")
+    agent = ENV.fetch("AGENT", "agent-rex")
+    rogue = Airlock::Rogue.new(agent: agent, workspace: Airlock::Swarm.workspace_for(ENV.fetch("REPO", "frameline"), agent))
+    names.each do |name|
+      o = rogue.run(name)
+      verdict = o.accepted ? "accepted" : "rejected"
+      puts format("%-20s expect %-14s %-9s %s", o.scenario, o.expect, verdict, o.gate.truncate(160))
+    end
+  end
 end
