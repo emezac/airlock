@@ -51,7 +51,7 @@ Measured with live Nemotron calls on Token Factory:
 Waiting or not built yet:
 
 - **Token Factory Sandboxes.** The client, the evidence re-run and the render runner are built and tested against a fake API, but our account is waiting for beta access. Until then, checks run on a local runner, and the Floor and the logs say so.
-- **Running on Nebius AI Cloud.** The deployment is ready ([deploy/README.md](deploy/README.md)) and runs checks on the local runner until Sandboxes are enabled. A container runner (`--network none`) comes next.
+- **The public demo.** The deployment files are ready ([deploy/README.md](deploy/README.md)). The plan is to host on Oracle Cloud Always Free ([deploy/oracle.md](deploy/oracle.md)), with the models on Token Factory, launching the week of 19 Oct 2026 ([docs/launch-plan.md](docs/launch-plan.md)). Checks run on the local runner until Sandboxes are enabled. A container runner (`--network none`) is optional.
 - **A prebuilt Rust image for the sandbox.** See [sandbox/README.md](sandbox/README.md).
 - **Not built:** sampled audits of auto-merged changes, summaries of escalated changes by Nemotron 3 Super, and visual checks of rendered boards by a vision model. The backlog is written by hand from the brief; turning a brief into tasks is not automated.
 
@@ -98,7 +98,8 @@ To run the whole demo (seed the Frameline repository behind the gate, start the 
 - [docs/workers.md](docs/workers.md): agent workers and the swarm, and what the live runs with Nemotron taught us.
 - [docs/demo.md](docs/demo.md): running the demo, the misbehaving agent, failure diagnosis, the Frameline tab and the Floor.
 - [control/README.md](control/README.md): the service's environment, endpoints and tasks.
-- [deploy/README.md](deploy/README.md): deploying on a VM (Nebius AI Cloud).
+- [deploy/README.md](deploy/README.md) and [deploy/oracle.md](deploy/oracle.md): deploying on a VM, and the Oracle Cloud Always Free plan.
+- [docs/launch-plan.md](docs/launch-plan.md): hackathon requirements, status, and what is left before submitting.
 
 ## License and credits
 

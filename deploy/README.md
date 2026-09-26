@@ -8,7 +8,15 @@ Airlock runs on one VM with Docker Compose. There are three containers:
 
 Checks, merge-queue CI and renders run on the **local runner**, inside the app container. Token Factory Sandboxes are switched off with `NEBIUS_SANDBOX=false`, so evidence re-runs are recorded as skipped. Sandboxes turn on once access is granted: see [Sandboxes and the container runner](#sandboxes-and-the-container-runner).
 
-## On Nebius AI Cloud
+Status: not deployed yet, and the image has not been built on a real machine. The launch plan is [../docs/launch-plan.md](../docs/launch-plan.md).
+
+## Where
+
+The public demo is planned on **Oracle Cloud Always Free**: an Arm VM with 2 OCPUs and 12 GB of memory. [oracle.md](oracle.md) covers it step by step, including the free tier's limits and idle reclamation.
+
+Any Ubuntu VM with Docker works the same way. The Nebius AI Cloud steps below are kept for reference: the hackathon requires Token Factory or AI Cloud, and Airlock meets that through Token Factory, so a Nebius VM is not required.
+
+## On Nebius AI Cloud (or any Ubuntu VM)
 
 1. **Create a VM.** Use Ubuntu 22.04 or 24.04, with at least 4 vCPUs, 16 GB of RAM and a 100 GB disk. Several agents compiling Rust at once is the heavy part. The VM needs a public IP, and ports 22, 80 and 443 open.
 2. **Install and start Airlock.** Either:
@@ -54,11 +62,12 @@ The swarm runs as jobs, so closing the SSH session does not stop it. The command
 | `NEBIUS_SANDBOX` | `false` | Use Token Factory Sandboxes for every run |
 | `AIRLOCK_SEED_DEMO` | `1` | Create the demo repository on the first start |
 | `JOB_THREADS` | `8` | Solid Queue worker threads: one per parallel agent, plus routing, the merge queue and renders |
+| `PG_SHARED_BUFFERS`, `PG_EFFECTIVE_CACHE_SIZE` | `256MB`, `1GB` | Postgres memory; `3GB` and `6GB` on a 12 GB VM |
 | `AIRLOCK_FORCE_SSL` | `true` | `false` serves plain HTTP. Use it only for a private network or a first smoke test without Caddy. |
 
 A recurring task (`config/recurring.yml`) runs `MergeQueueSweepJob` every minute. That keeps the merge queue moving after a restart.
 
-The gate (`/gate/*`) is not published: Caddy answers 404. The pre-receive hook calls the gate on `127.0.0.1` inside the app container.
+The gate (`/gate/*`) and agentkit's mount point (`/agentkit`, whose console is disabled anyway) are not published: Caddy answers 404. The pre-receive hook calls the gate on `127.0.0.1` inside the app container.
 
 All state lives in two volumes: `pg` holds the database, and `data` holds the repositories, working clones and renders. `docker compose down` keeps both, and `down -v` deletes them.
 

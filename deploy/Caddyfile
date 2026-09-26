@@ -3,7 +3,8 @@
 {$AIRLOCK_HOST} {
 	encode zstd gzip
 	# The gate is for the git hook inside the app container, not the internet.
-	@gate path /gate/*
-	respond @gate 404
+	# agentkit's console is disabled in the app; hide its mount point too.
+	@internal path /gate/* /agentkit /agentkit/*
+	respond @internal 404
 	reverse_proxy app:3000
 }

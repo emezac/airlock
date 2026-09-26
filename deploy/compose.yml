@@ -12,6 +12,9 @@ services:
   db:
     image: postgres:16
     restart: unless-stopped
+    # Larger buffers on bigger VMs (and above Oracle's idle-memory threshold).
+    shm_size: 512mb
+    command: ["postgres", "-c", "shared_buffers=${PG_SHARED_BUFFERS:-256MB}", "-c", "effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1GB}"]
     environment:
       POSTGRES_USER: control
       POSTGRES_PASSWORD: ${CONTROL_DATABASE_PASSWORD:?set CONTROL_DATABASE_PASSWORD}
