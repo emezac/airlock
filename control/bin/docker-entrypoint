@@ -1,8 +1,13 @@
 #!/bin/bash -e
+# Prepares the database before the server starts. With AIRLOCK_SEED_DEMO=1 it
+# also creates the demo repository (demo/frameline, with the pre-receive hook)
+# the first time, when it does not exist yet.
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+if [ "$1" == "./bin/rails" ] && [ "$2" == "server" ]; then
   ./bin/rails db:prepare
+  if [ "${AIRLOCK_SEED_DEMO}" == "1" ] && [ ! -d "${AIRLOCK_GIT_ROOT}/frameline.git" ]; then
+    ./bin/rails airlock:demo:seed
+  fi
 fi
 
 exec "${@}"

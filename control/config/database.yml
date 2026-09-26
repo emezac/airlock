@@ -17,7 +17,7 @@ default: &default
   encoding: unicode
   # For details on connection pooling, see Rails configuration guide
   # https://guides.rubyonrails.org/configuring.html#database-pooling
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  max_connections: <%= ENV.fetch("DB_POOL") { 20 } %>
 
 
 development:
@@ -84,21 +84,10 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+# One database: the app's tables, Solid Queue's tables and agentkit's audit log.
+# DATABASE_URL (postgres://user:pass@host/db) overrides host and credentials.
 production:
-  primary: &primary_production
-    <<: *default
-    database: control_production
-    username: control
-    password: <%= ENV["CONTROL_DATABASE_PASSWORD"] %>
-  cache:
-    <<: *primary_production
-    database: control_production_cache
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: control_production_queue
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: control_production_cable
-    migrations_paths: db/cable_migrate
+  <<: *default
+  database: control_production
+  username: control
+  password: <%= ENV["CONTROL_DATABASE_PASSWORD"] %>

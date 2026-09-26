@@ -1,0 +1,22 @@
+# Build context is the repository root (docker build -f deploy/Dockerfile .).
+# Only control/, hooks/ and demo/ are copied; keep everything else out.
+.git
+**/.env
+**/.env.*
+**/*.log
+**/tmp
+**/log
+**/target
+**/out
+**/node_modules
+**/.bundle
+*.mp4
+control/public/assets
+control/config/master.key
+control/config/credentials/*.key
+control/storage
+docs
+sandbox
+e2e*
+cargo-*
+relay

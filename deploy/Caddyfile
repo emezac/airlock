@@ -1,0 +1,9 @@
+# Automatic HTTPS for AIRLOCK_HOST (Let's Encrypt). A name like
+# 203-0-113-7.sslip.io resolves to the VM's public IP with no DNS setup.
+{$AIRLOCK_HOST} {
+	encode zstd gzip
+	# The gate is for the git hook inside the app container, not the internet.
+	@gate path /gate/*
+	respond @gate 404
+	reverse_proxy app:3000
+}

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Shortcut for commands inside the running app container, from the repo root:
+#   deploy/airlock rails airlock:swarm AGENTS=agent-ada,agent-kai,agent-lin
+#   deploy/airlock rails airlock:rogue
+#   deploy/airlock logs
+set -euo pipefail
+cd "$(dirname "$0")/.."
+DOCKER="docker"; docker info >/dev/null 2>&1 || DOCKER="sudo docker"
+compose() { $DOCKER compose -f deploy/compose.yml --env-file deploy/.env "$@"; }
+case "${1:-}" in
+  rails) shift; compose exec app ./bin/rails "$@" ;;
+  logs)  shift; compose logs -f --tail=200 "${@:-app}" ;;
+  up)    compose up -d --build ;;
+  down)  compose down ;;
+  *)     compose "$@" ;;
+esac

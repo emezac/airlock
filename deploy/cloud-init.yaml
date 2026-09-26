@@ -1,0 +1,10 @@
+#cloud-config
+# Paste as user data when creating the VM (Ubuntu 22.04 or 24.04).
+# It installs Docker and starts Airlock without the Token Factory key: the
+# key does not belong in user data, which the cloud keeps in the VM's
+# metadata. Afterwards, on the VM:
+#   cd ~/airlock && nano deploy/.env        # set NEBIUS_TOKEN and NEBIUS_PROJECT_ID
+#   deploy/airlock up
+# Replace "ubuntu" below if the image's default user has another name.
+runcmd:
+  - [ bash, -lc, "su - ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/emezac/airlock/main/deploy/bootstrap.sh | bash' > /var/log/airlock-bootstrap.log 2>&1" ]

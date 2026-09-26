@@ -32,7 +32,7 @@ The service has three tabs:
 
 ## Status
 
-Built and tested (113 tests):
+Built and tested (116 tests):
 
 - The push gate and the `pre-receive` hook.
 - Labels and risk, human-attention control, and the batched merge queue with test-and-bisect.
@@ -40,6 +40,7 @@ Built and tested (113 tests):
 - Failure diagnosis, and the scripted misbehaving agent.
 - The three tabs.
 - Frameline with visual regression tests.
+- A one-VM deployment (`deploy/`): Docker Compose with Postgres, the service and Caddy, and Solid Queue running inside Puma. The production configuration has been run end to end on a test machine, but the image has not been built there.
 
 Measured with live Nemotron calls on Token Factory:
 
@@ -50,7 +51,7 @@ Measured with live Nemotron calls on Token Factory:
 Waiting or not built yet:
 
 - **Token Factory Sandboxes.** The client, the evidence re-run and the render runner are built and tested against a fake API, but our account is waiting for beta access. Until then, checks run on a local runner, and the Floor and the logs say so.
-- **Deployment on Nebius.** This includes configuring Solid Queue, with the merge-queue sweep as a recurring task.
+- **Running on Nebius AI Cloud.** The deployment is ready ([deploy/README.md](deploy/README.md)) and runs checks on the local runner until Sandboxes are enabled. A container runner (`--network none`) comes next.
 - **A prebuilt Rust image for the sandbox.** See [sandbox/README.md](sandbox/README.md).
 - **Not built:** sampled audits of auto-merged changes, summaries of escalated changes by Nemotron 3 Super, and visual checks of rendered boards by a vision model. The backlog is written by hand from the brief; turning a brief into tasks is not automated.
 
@@ -63,6 +64,7 @@ Waiting or not built yet:
 | `demo/brief.yml` | The request the swarm works from (a made-up brand, Lumen) |
 | `demo/backlog.yml` | Tasks written from the brief, each with its context files and the check its evidence cites |
 | `demo/frameline/` | Frameline, the demo target: storyboards and animatics from YAML, built on the `taller_film` renderer |
+| `deploy/` | Dockerfile, Compose file, Caddy and a bootstrap script for one VM |
 | `sandbox/` | Notes for the Token Factory Sandboxes image |
 | `docs/` | Architecture, evidence, risk, workers, and how to run the demo |
 | `airlock.toml.example` | An annotated policy |
@@ -96,6 +98,7 @@ To run the whole demo (seed the Frameline repository behind the gate, start the 
 - [docs/workers.md](docs/workers.md): agent workers and the swarm, and what the live runs with Nemotron taught us.
 - [docs/demo.md](docs/demo.md): running the demo, the misbehaving agent, failure diagnosis, the Frameline tab and the Floor.
 - [control/README.md](control/README.md): the service's environment, endpoints and tasks.
+- [deploy/README.md](deploy/README.md): deploying on a VM (Nebius AI Cloud).
 
 ## License and credits
 

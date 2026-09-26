@@ -27,7 +27,9 @@ bin/rails test
 AIRLOCK_HOOK_SECRET=change-me bin/rails server -p 3000
 ```
 
-To run the demo end to end, see [../docs/demo.md](../docs/demo.md).
+To run the demo end to end, see [../docs/demo.md](../docs/demo.md). To deploy on a VM, see [../deploy/README.md](../deploy/README.md).
+
+In production, jobs run on Solid Queue in the primary database, inside Puma (`SOLID_QUEUE_IN_PUMA=1`).
 
 ## Environment
 
@@ -47,6 +49,11 @@ To run the demo end to end, see [../docs/demo.md](../docs/demo.md).
 | `NEBIUS_API_BASE`, `NEBIUS_SANDBOXES_BASE` | Override the Token Factory endpoints. |
 | `AIRLOCK_RELAY_OUT`, `AIRLOCK_RELAY_IN` | Development only: relay model calls through files to a machine that holds the token (see [../docs/workers.md](../docs/workers.md)). |
 | `AGENTKIT_AUDIT_KEY` | Audit signing key. Required in production. |
+| `DATABASE_URL` | Production database (one database: app tables, Solid Queue, audit log). |
+| `SOLID_QUEUE_IN_PUMA` | Run Solid Queue inside Puma (the deployment does). |
+| `JOB_THREADS`, `DB_POOL` | Solid Queue worker threads (default 8) and database pool (default 20). |
+| `AIRLOCK_FORCE_SSL` | `false` to serve plain HTTP in production (behind no TLS proxy). Default `true`. |
+| `AIRLOCK_SEED_DEMO` | `1` makes the container create the demo repository on first start. |
 | `SECRET_KEY_BASE` | Rails secret. Required in production. |
 
 ## Install the hook on a bare repository
@@ -106,14 +113,14 @@ A push that rewrites a branch (not a fast-forward) is judged like a new branch: 
 | --- | --- |
 | `RouteChangeJob` | After an accepted push: evidence re-run, labels, risk, routing |
 | `MergeQueueJob` | When a change is queued or approved; one batch at a time per repository |
-| `MergeQueueSweepJob` | When Puma boots, and as a recurring task in production (to configure) |
+| `MergeQueueSweepJob` | When Puma boots, and every minute in production (`config/recurring.yml`) |
 | `DiagnoseFailureJob` | For each change that fails in the merge queue |
 | `RenderJob` | After a green batch, and for a visual change sent to review |
 
 ## Tests
 
 ```sh
-bin/rails test     # 113 tests
+bin/rails test     # 116 tests
 ```
 
 Tests use real git repositories, and some run the real hook against a local Puma server. They never call Token Factory: model clients are replaced by scripted ones.

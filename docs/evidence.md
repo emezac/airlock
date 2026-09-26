@@ -33,7 +33,7 @@ The run leaves a result image. Airlock stores its uuid as `evidence_checkpoint`,
 Agents' checks, evidence re-runs, merge-queue CI and renders all go through a runner with one contract: run a command on a committed tree and return the result.
 
 - **`Runners::Sandbox`** is the production runner.
-- **`Runners::Local`** is for development. Each tree builds in its own `target/`. A shared build cache once let one agent's check run another agent's test binaries, so its evidence proved nothing (see [workers.md](workers.md)).
+- **`Runners::Local`** is for development, and for the deployment until Sandboxes are enabled. Each tree builds in its own `target/`, and the command gets a minimal environment (`PATH`, `HOME`, the Rust paths): the agent-written code it runs never sees the service's secrets. That is not isolation (see [../deploy/README.md](../deploy/README.md#security-of-the-local-runner)). A shared build cache once let one agent's check run another agent's test binaries, so its evidence proved nothing (see [workers.md](workers.md)).
 - **Generated files** (regenerated golden images, rendered boards and animatics) come back from a sandbox as a base64 tarball between markers in the output. Only regular files under the allowed paths are extracted: no links, no absolute paths, no `..`.
 
 ## Current state
