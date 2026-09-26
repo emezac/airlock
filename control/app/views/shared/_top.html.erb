@@ -2,6 +2,7 @@
   <div class="brand"><span class="mark"></span>Airlock</div>
   <nav class="tabs" aria-label="Views">
     <%= link_to "Control room", dashboard_path, class: ("active" if active == :control), "aria-current": ("page" if active == :control) %>
+    <%= link_to "Floor", floor_path, class: ("active" if active == :floor), "aria-current": ("page" if active == :floor) %>
     <%= link_to "Frameline", product_path, class: ("active" if active == :product), "aria-current": ("page" if active == :product) %>
   </nav>
   <div class="sub"><%= subtitle %></div>

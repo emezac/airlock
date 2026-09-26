@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -944,6 +944,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_130000) do
     t.index ["gate_decision_id"], name: "index_changes_on_gate_decision_id"
     t.index ["merge_batch_id"], name: "index_changes_on_merge_batch_id"
     t.index ["repo", "state", "created_at"], name: "index_changes_on_repo_and_state_and_created_at"
+  end
+
+  create_table "floor_events", force: :cascade do |t|
+    t.string "repo", null: false
+    t.string "kind", null: false
+    t.string "actor"
+    t.bigint "change_id"
+    t.string "task"
+    t.string "text"
+    t.jsonb "data", default: {}, null: false
+    t.datetime "occurred_at", null: false
+    t.index ["repo", "id"], name: "index_floor_events_on_repo_and_id"
+    t.index ["repo", "occurred_at"], name: "index_floor_events_on_repo_and_occurred_at"
   end
 
   create_table "gate_decisions", force: :cascade do |t|

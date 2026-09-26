@@ -16,8 +16,15 @@ def git(*args)
   out
 end
 
+# A push that rewrites a branch (not a fast-forward) is judged like a new
+# branch: counting old..new would blame the pusher for commits main gained in
+# the meantime, merge commits without evidence included.
+def fast_forward?(old, new)
+  old != ZERO && system("git", "merge-base", "--is-ancestor", old, new, out: File::NULL, err: File::NULL)
+end
+
 def base_for(old, new)
-  return old unless old == ZERO
+  return old if fast_forward?(old, new)
   # New branch: compare against main when it exists, else against the empty tree.
   main = `git rev-parse -q --verify refs/heads/main`.strip
   main.empty? ? git("hash-object", "-t", "tree", "/dev/null").strip : git("merge-base", main, new).strip
@@ -29,7 +36,7 @@ def report(ref, old, new)
            ref: ref, old: old, new: new, commits: [], files: [], added_lines: [] }
   return body if new == ZERO
 
-  range = old == ZERO ? [new, "--not", "--branches", "--tags"] : ["#{old}..#{new}"]
+  range = fast_forward?(old, new) ? ["#{old}..#{new}"] : [new, "--not", "--branches", "--tags"]
   body[:commits] = git("rev-list", "--reverse", *range).split.map do |sha|
     { sha: sha, author: git("log", "-1", "--format=%ae", sha).strip, message: git("log", "-1", "--format=%B", sha) }
   end

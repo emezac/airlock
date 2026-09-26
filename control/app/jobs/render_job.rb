@@ -15,11 +15,14 @@ class RenderJob < ApplicationJob
                                           path: File.join(ENV.fetch("AIRLOCK_WORK_ROOT", Rails.root.join("tmp/workspaces").to_s), "#{repo}-render"))
     workspace.prepare!
     workspace.reset_to(sha)
+    Airlock::Floor.emit("render.started", repo: repo, text: sha[0, 7], data: { sha: sha })
     output_dir = File.join(workspace.path, policy.render_output)
     FileUtils.rm_rf(output_dir)
     runner = Airlock::QueueRunner.runner(policy, timeout: policy.render_timeout)
     result = runner.call(workspace.path, command: policy.render_command, collect: [policy.render_output])
     manifest = renders.store!(sha, from: output_dir, ok: result.ok, output: result.output)
+    Airlock::Floor.emit("render.finished", repo: repo, text: manifest["files"].join(", "),
+                        data: { sha: sha, ok: manifest["ok"], files: manifest["files"] })
     Agentkit::Audit.record(event_type: "commit.rendered", status: manifest["ok"] ? "ok" : "failed",
                            payload: { repo: repo, sha: sha, files: manifest["files"] })
   end

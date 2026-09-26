@@ -139,6 +139,60 @@ Two bugs showed up while running this end to end:
   restart waited for the next push. `MergeQueueSweepJob` now runs when Puma has
   booted (and belongs in the recurring tasks in production).
 
+## The floor
+
+The control room shows numbers; the Floor tab (`/floor`) shows the same
+system as a place. Its floor plan is the architecture:
+
+- **A wall** splits the floor into the agents' side and main's side. **The
+  gate** (the pre-receive hook) is the only door.
+- **The sandbox lab** straddles the wall: agents run their checks there, and
+  Airlock re-runs their evidence there. Without Token Factory Sandboxes
+  configured it says so ("local runner, development").
+- On main's side, a change's card goes to **labels and risk** (rules and
+  Nano), then to **the review desk** (a person) or straight to **the merge
+  queue**. From the queue it goes into **main**, or to **the doctor** (Ultra)
+  if it fails. **The render studio** shows the latest board of main.
+
+Each agent is a paper cut-out at its own desk. You can see it think (asking
+Nemotron Super), type (applying edits), walk to the lab to run its check, and
+carry its change to the gate as a card. From the gate on, the card moves by
+itself. Each station has its own character (the gatekeeper, Nano, you, the
+queue operator, Ultra), which reacts when something happens there. The style
+is Frameline's paper and ink, drawn in code; no third-party art.
+
+Three modes:
+
+- **Live** follows `/floor/events` every 1.5 s.
+- **Replay** plays back a past session (a stretch of events between quiet
+  gaps). Real gaps are sped up, long waits such as a Rust build are capped,
+  and events are at least 0.9 s apart so each one can be seen. This is the
+  mode for the video: real data, replayed at a watchable speed.
+- **Explain the architecture** numbers the rooms, draws the path of a change,
+  and walks through the nine components in order. Clicking a room explains
+  it.
+
+Next to the floor, "What just happened" puts every event in one line of text,
+as a live region for screen readers. With reduced motion, movements are
+instant and nothing idles.
+
+The events come from `FloorEvent`: a closed vocabulary of presentation events
+(`agent.thinking`, `gate.rejected`, `queue.ci_run`, `diagnosis.done`...)
+emitted where each thing happens. Emission is best effort: a failure to
+record an animation never fails a push, a batch or a review. The signed audit
+log stays the record of truth.
+
+Building it caught two real bugs:
+
+- **The hook blamed agents for main's commits.** When a push rewrites an
+  existing branch (not a fast-forward), the pre-receive hook used `old..new`,
+  which included the merge queue's merge commits on main, without evidence
+  trailers. It also counted main's files as the agent's. A rewrite is now
+  judged like a new branch. A test re-pushes a scenario after main moved, and
+  fails with the old logic.
+- **The floor asked for the wrong repository.** It appended `?after=` to a URL
+  that already had `?repo=`. URLs are now built with `URL` and `searchParams`.
+
 ## Starting over
 
 ```sh

@@ -82,11 +82,18 @@ module Airlock
       def perform(run, assignment)
         assignment = with_history(run.repo, assignment)
         run.update!(status: "working", started_at: Time.current)
-        result = worker_for(run.repo, run.agent, run.task).run(assignment, on_note: ->(line) { run.note!(line) })
+        floor = { repo: run.repo, actor: run.agent, task: run.task }
+        Floor.emit("agent.started", text: assignment.title, **floor)
+        result = worker_for(run.repo, run.agent, run.task).run(
+          assignment, on_note: ->(line) { run.note!(line) },
+                      on_event: ->(kind, text, data) { Floor.emit(kind, text: text, data: data, **floor) }
+        )
         run.finish!(result)
+        Floor.emit("agent.finished", text: result.status, data: { status: result.status, attempts: result.attempts }, **floor)
         summary(run)
       rescue StandardError => e
         run.update!(status: "error", last_note: "#{e.class}: #{e.message}".truncate(240), finished_at: Time.current)
+        Floor.emit("agent.finished", repo: run.repo, actor: run.agent, task: run.task, text: "error", data: { status: "error" })
         summary(run)
       end
 

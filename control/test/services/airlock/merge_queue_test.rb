@@ -56,6 +56,11 @@ class Airlock::MergeQueueTest < ActiveSupport::TestCase
     assert_enqueued_with(job: DiagnoseFailureJob, args: [bad.id])
     assert(good.all? { |c| c.reload.state == "merged" })
     refute_includes main_files, "BROKEN"
+    kinds = FloorEvent.order(:id).pluck(:kind)
+    assert_equal "queue.batch_started", kinds.first
+    assert_equal 6, kinds.count("queue.ci_run")
+    assert_equal 3, kinds.count("change.merged")
+    assert_equal ["failed CI"], FloorEvent.where(kind: "change.failed").pluck(:text)
     # 5 runs of test-and-bisect plus 1 to confirm the surviving union together.
     assert_equal 6, batch.ci_runs
     assert_operator AgentStat.rate_for("agent-1"), :>, 0.05

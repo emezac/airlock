@@ -45,6 +45,8 @@ module Airlock
                                  log: [{ event: "start", k: k, f: f.round(3),
                                          expected_runs_per_change: (BatchMath.expected_runs(k, f) / k).round(3) }])
       Change.where(id: picked.map(&:id)).update_all(state: "merging", merge_batch_id: batch.id)
+      Floor.emit("queue.batch_started", repo: repo, actor: @policy.merge_identity, text: "batch of #{picked.size}",
+                 data: { batch: batch.id, changes: picked.map(&:id), tasks: picked.map { |c| Floor.task_for(c.ref) }, k: k, f: f.round(3) })
 
       @runs = 0
       @log = batch.log
@@ -74,6 +76,8 @@ module Airlock
           end
         end
         batch.update!(state: "abandoned", log: batch.log + [{ event: "abandoned", reason: "process ended mid-batch" }])
+        Floor.emit("queue.recovered", repo: repo, actor: @policy.merge_identity, text: "batch #{batch.id} recovered",
+                   data: { batch: batch.id })
         Agentkit::Audit.record(event_type: "merge_queue.recovered", status: "abandoned", subject: batch,
                                payload: { repo: repo, main: main })
       end
@@ -120,6 +124,8 @@ module Airlock
       result = @runner.call(@workspace.path)
       @log << { event: "ci", changes: changes.map(&:id), ok: result.ok, output: result.ok ? nil : result.output.last(2000) }
       @green_sets << changes.map(&:id).sort if result.ok
+      Floor.emit("queue.ci_run", repo: changes.first.repo, actor: @policy.merge_identity, text: result.ok ? "green" : "red",
+                 data: { run: @runs, changes: changes.map(&:id), ok: result.ok })
       result.ok
     end
 
@@ -144,6 +150,15 @@ module Airlock
         AgentStat.observe!(change.pusher, failed: state != "merged", alpha: @policy.failure_rate_alpha)
       end
       failed = picked.reject { |c| good.include?(c) }
+      Floor.emit("queue.batch_finished", repo: batch.repo, actor: @policy.merge_identity, text: "#{good.size}/#{picked.size} merged",
+                 data: { batch: batch.id, merged: good.map(&:id), failed: failed.map(&:id), conflicts: @conflicts.map(&:id),
+                         runs: @runs, sha: merged_sha })
+      picked.each do |c|
+        kind = good.include?(c) ? "change.merged" : "change.failed"
+        Floor.emit(kind, repo: batch.repo, actor: c.pusher, change: c, task: Floor.task_for(c.ref),
+                   text: good.include?(c) ? merged_sha.to_s[0, 7] : (@conflicts.include?(c) ? "conflict" : "failed CI"),
+                   data: { batch: batch.id })
+      end
       batch.update!(state: good.size == picked.size ? "green" : "red", ci_runs: @runs, merged_sha: merged_sha,
                     log: @log + [{ event: "finish", merged: good.map(&:id), runs: @runs }])
       Agentkit::Audit.record(event_type: "merge_queue.batch", status: batch.state, subject: batch,

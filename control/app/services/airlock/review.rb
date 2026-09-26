@@ -23,6 +23,8 @@ module Airlock
                              failure_mode: :required)
       AgentStat.observe!(change.pusher, failed: true, alpha: Policy.load.failure_rate_alpha) if state == "rejected"
       MergeQueueJob.perform_later(change.repo) if state == "approved"
+      Floor.emit(state == "approved" ? "review.approved" : "review.rejected", repo: change.repo, actor: reviewer, change: change,
+                 task: Floor.task_for(change.ref), text: reason.presence || state, data: { agent: change.pusher })
       change
     end
 

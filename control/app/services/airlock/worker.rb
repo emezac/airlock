@@ -35,8 +35,10 @@ module Airlock
     end
 
     # on_note: called with each progress line, for live status.
-    def run(assignment, on_note: nil)
+    # on_event: called with (kind, text, data) at each step, for the floor view.
+    def run(assignment, on_note: nil, on_event: nil)
       @on_note = on_note
+      @on_event = on_event
       @log = []
       @last_paths = []
       @tokens = [0, 0]
@@ -48,26 +50,32 @@ module Airlock
 
       1.upto(@max_attempts) do |attempt|
         progress "attempt #{attempt}: waiting for #{@model_name.split('/').last}"
+        event "agent.thinking", "asking #{@model_name.split('/').last}", attempt: attempt
         reply = ask(messages)
         messages << { role: "assistant", content: reply }
         @last_paths = reply.scan(/^(\S+)\n<{5,9} SEARCH/).flatten.uniq
         edits = Edits.parse(reply)
         touched |= edits.apply!(@workspace.path)
         note "attempt #{attempt}: #{edits.summary} (#{touched.join(', ')})"
+        event "agent.editing", edits.summary, attempt: attempt, files: touched
         if edits.update_goldens?
           regen = @runner.call(@workspace.path, command: @update_goldens_command, collect: GOLDEN_PATHS)
           note "regenerated golden images: #{regen.ok ? 'ok' : 'failed'}"
+          event "agent.goldens", "regenerated golden images", ok: regen.ok
         end
         @workspace.commit_all("wip #{assignment.id} attempt #{attempt}")
         progress "attempt #{attempt}: running #{assignment.check}"
+        event "agent.testing", assignment.check, attempt: attempt, sandbox: !check_is_local?
         check = @runner.call(@workspace.path, command: assignment.check)
         unless check.ok
           note "check failed: #{assignment.check}"
+          event "agent.check_failed", FailureDigest.call(check.output).lines.first.to_s.strip, attempt: attempt
           messages << { role: "user", content: failure_prompt(assignment, check.output, touched) }
           next
         end
 
         sha = @workspace.squash(commit_message(assignment, edits, check))
+        event "agent.pushing", branch, attempt: attempt
         accepted, output = @workspace.push_branch(branch, @agent)
         gate = gate_lines(output)
         note "gate: #{accepted ? 'accepted' : 'refused'} #{gate}"
@@ -76,6 +84,7 @@ module Airlock
         messages << { role: "user", content: gate_prompt(gate) }
       rescue Edits::Invalid => e
         note "attempt #{attempt}: edits refused: #{e.message}"
+        event "agent.edits_refused", e.message, attempt: attempt
         messages << { role: "user", content: "Your edits were not applied: #{e.message}. Nothing changed. " \
                                              "Reply again in the same format, with SEARCH copied from the files as they are now:\n\n" \
                                              "#{files_block((touched | attempted_paths(e)))}" }
@@ -100,6 +109,10 @@ module Airlock
 
     # Live status only; not part of the result's log.
     def progress(line) = @on_note&.call(line)
+
+    def event(kind, text, **data) = @on_event&.call(kind, text, data)
+
+    def check_is_local? = @runner.is_a?(Runners::Local)
 
     def result(status, assignment, branch, sha, attempts, gate)
       Result.new(status: status, agent: @agent, assignment: assignment.id, branch: branch, sha: sha, attempts: attempts,

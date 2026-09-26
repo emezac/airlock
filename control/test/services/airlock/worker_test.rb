@@ -60,6 +60,15 @@ class Airlock::WorkerTest < ActiveSupport::TestCase
     assert_includes model.calls.first.last[:content], "# Frameline"
   end
 
+  test "every step is reported as a floor event" do
+    events = []
+    model = ScriptedModel.new(reply("First try.", write("feature.txt", "BUG\n")), reply("Fix.", edit("feature.txt", "BUG", "ok")))
+    worker(model).run(@assignment, on_event: ->(kind, text, data) { events << [kind, data[:attempt]] })
+    assert_equal [["agent.thinking", 1], ["agent.editing", 1], ["agent.testing", 1], ["agent.check_failed", 1],
+                  ["agent.thinking", 2], ["agent.editing", 2], ["agent.testing", 2], ["agent.pushing", 2]], events
+    assert(events.all? { |k, _| FloorEvent::KINDS.include?(k) })
+  end
+
   test "a failing check goes back to the model with the output" do
     model = ScriptedModel.new(reply("First try.", write("feature.txt", "BUG\n")), reply("Fix.", edit("feature.txt", "BUG", "ok")))
     result = worker(model).run(@assignment)

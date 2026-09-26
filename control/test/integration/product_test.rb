@@ -137,6 +137,7 @@ class ProductTest < ActionDispatch::IntegrationTest
       post "/frameline/reviews/#{@review.id}/approve"
     end
     assert_equal %w[approved Enrique], @review.reload.slice(:state, :reviewer).values
+    assert_equal [["review.approved", "Enrique", "FL-2"]], FloorEvent.where(change_id: @review.id).pluck(:kind, :actor, :task)
     post "/frameline/reviews/#{@review.id}/reject", params: { reason: "too late" }
     follow_redirect!
     assert_includes response.body, "change is approved"

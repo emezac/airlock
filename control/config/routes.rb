@@ -1,5 +1,9 @@
 Rails.application.routes.draw do
   get "dashboard", to: "dashboard#show"
+  get "floor", to: "floor#show", as: :floor
+  get "floor/state", to: "floor#state", as: :floor_state, defaults: { format: :json }
+  get "floor/events", to: "floor#events", as: :floor_events, defaults: { format: :json }
+  get "floor/sessions", to: "floor#sessions", as: :floor_sessions, defaults: { format: :json }
   get "frameline", to: "product#show", as: :product
   resource :reviewer_session, only: %i[new create destroy], path: "frameline/reviewer"
   post "frameline/reviews/:review_id/:decision", to: "decisions#create", as: :decide_review,

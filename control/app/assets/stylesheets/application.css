@@ -142,3 +142,26 @@ input[type=text], input[type=password] { font: inherit; font-size: 13px; padding
 .flash.bad { background: var(--override); color: var(--bad); }
 #page .panel-box h2 a { color: var(--accent); font-weight: 600; text-decoration: none; }
 #page .panel-box h2 a:hover { text-decoration: underline; }
+
+/* Floor tab */
+#floor-page { padding: 16px 24px 40px; max-width: 1400px; margin: 0 auto; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+#floor-page > * { min-width: 0; }
+.floor-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.button.mode.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.replay-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.replay-controls[hidden] { display: none; }
+.replay-controls select { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.floor-stage { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.floor-stage canvas { display: block; cursor: pointer; }
+.floor-lower { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 14px; }
+.floor-explain[hidden] { display: none; }
+.floor-explain .lead { margin: 0 0 12px; color: var(--ink); max-width: 72ch; }
+.tour-nav { display: flex; align-items: center; gap: 10px; }
+#floor-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; max-height: 320px; overflow-y: auto; }
+#floor-log li { padding: 3px 0 3px 10px; border-left: 3px solid var(--line); overflow-wrap: anywhere; }
+#floor-log li[data-kind="gate"] { border-left-color: var(--ink); } #floor-log li[data-kind="review"] { border-left-color: var(--warn); }
+#floor-log li[data-kind="queue"], #floor-log li[data-kind="change"] { border-left-color: var(--good); }
+#floor-log li[data-kind="diagnosis"] { border-left-color: var(--accent); }
+#floor-log time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; }
+@media (max-width: 640px) { #floor-page { padding: 12px 16px 32px; } }

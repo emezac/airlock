@@ -10,6 +10,10 @@ module Gate
       policy = Airlock::Policy.load
       decision = Airlock::Gate.new(policy).evaluate(push)
       row = record!(push, decision)
+      Airlock::Floor.emit(decision.accepted? ? "gate.accepted" : "gate.rejected", repo: push.repo, actor: push.pusher,
+                          task: Airlock::Floor.task_for(push.ref),
+                          text: decision.accepted? ? push.ref.delete_prefix("refs/heads/") : decision.reasons.first,
+                          data: { ref: push.ref, reasons: decision.reasons, review: decision.review })
       report = params.to_unsafe_h.slice(*REPORT_KEYS)
       if decision.accepted? && (change = Airlock::Intake.admit(policy, push, row, report))
         RouteChangeJob.perform_later(change.id, report)

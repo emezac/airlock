@@ -1,0 +1,34 @@
+<% content_for :title, "Airlock · Floor" %>
+<%= render "shared/top", active: :floor, subtitle: "The same system, told as a place: agents on one side of the wall, main on the other, and one door." %>
+<main id="floor-page">
+  <div class="floor-bar">
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" class="button mode active" data-mode="live" aria-pressed="true">Live</button>
+      <button type="button" class="button mode" data-mode="replay" aria-pressed="false">Replay</button>
+      <button type="button" class="button mode" data-mode="explain" aria-pressed="false">Explain the architecture</button>
+    </div>
+    <div class="replay-controls" hidden>
+      <label>Session <select id="floor-session"></select></label>
+      <label>Speed <select id="floor-speed"><option value="10">10×</option><option value="20" selected>20×</option><option value="60">60×</option></select></label>
+      <button type="button" class="button" id="floor-play">Play</button>
+    </div>
+    <span class="floor-status note" id="floor-status" role="status"></span>
+  </div>
+  <div class="floor-stage">
+    <canvas id="floor" data-repo="<%= @repo %>" data-state="<%= floor_state_path(repo: @repo) %>"
+            data-events="<%= floor_events_path(repo: @repo) %>" data-sessions="<%= floor_sessions_path(repo: @repo) %>"
+            role="img" aria-label="Floor plan of Airlock: agents' desks, the gate, the sandbox lab, labels, the review desk, the merge queue, main, the doctor and the render studio, with agents and changes moving between them."></canvas>
+  </div>
+  <div class="floor-lower">
+    <section class="panel-box floor-explain" id="floor-explain" hidden>
+      <h2 id="explain-title">How Airlock works</h2>
+      <p id="explain-body" class="lead">Pick a room on the floor, or follow the tour.</p>
+      <div class="tour-nav"><button type="button" class="button" id="tour-prev">Back</button><span id="tour-step" class="note"></span><button type="button" class="button primary" id="tour-next">Next</button></div>
+    </section>
+    <section class="panel-box floor-log">
+      <h2>What just happened</h2>
+      <ol id="floor-log" aria-live="polite"></ol>
+    </section>
+  </div>
+</main>
+<script type="module" src="<%= asset_path("floor.js") %>"></script>
